@@ -1,0 +1,10 @@
+{
+  "name": "church-bible-talks-map",
+  "version": "1.0.0",
+  "private": true,
+  "description": "San Antonio Bible Talks & Small Groups Map",
+  "scripts": {
+    "build": "node build.js",
+    "serve": "npx serve ."
+  }
+}

@@ -1,0 +1,12 @@
+node_modules/
+.next/
+
+# Prototype generated artifact (kept on disk for local reference, never committed —
+# contains encrypted-with-default-password PII blob)
+index.html
+
+# PII / data — never commit
+*.csv
+
+# Env files (all variants)
+.env*
