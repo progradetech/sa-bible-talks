@@ -1,0 +1,43 @@
+{
+  "name": "sa-bible-talks",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Privacy-first map of San Antonio bible talks and small groups",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "import-csv": "tsx scripts/import-csv.ts",
+    "create-admin": "tsx scripts/create-admin.ts"
+  },
+  "dependencies": {
+    "@maptiler/sdk": "^3.7.0",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.48.0",
+    "drizzle-orm": "^0.39.0",
+    "maplibre-gl": "^5.1.0",
+    "next": "16.2.4",
+    "nodemailer": "^7.0.0",
+    "postgres": "^3.4.5",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/nodemailer": "^7.0.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.30.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "tailwindcss": "^4",
+    "tsx": "^4.19.0",
+    "typescript": "^5"
+  }
+}
