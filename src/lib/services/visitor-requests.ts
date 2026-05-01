@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { bibleTalksPii, db, visitorRequests } from '@/db';
 import { record } from '../audit';
-import { decryptField, encryptField, getKeyId } from '../crypto';
+import { decryptField, encryptField, getKeyVersion } from '../crypto';
 import { send } from '../mail';
 import { check as rateLimit } from '../rate-limit';
 import type { AdminContext, PublicContext, VisitorRequestInput } from '../types';
@@ -57,7 +57,7 @@ export async function submit(
   if (!targetCheck.ok) throw new RateLimitedError(targetCheck.retryAfterMs ?? PER_TARGET_WINDOW_MS);
 
   const tempId = crypto.randomUUID();
-  const keyId = getKeyId();
+  const keyVersion = getKeyVersion();
   const [nameEnc, emailEnc, phoneEnc, messageEnc] = await Promise.all([
     encryptField(input.visitorName, tempId),
     encryptField(input.visitorEmail, tempId),
@@ -76,7 +76,7 @@ export async function submit(
       messageEnc,
       ip: ctx.ip ?? null,
       userAgent: ctx.userAgent ?? null,
-      keyId,
+      keyVersion,
     })
     .returning();
 

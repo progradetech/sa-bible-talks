@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { bibleTalks, bibleTalksPii, db } from '@/db';
 import { record } from '../audit';
-import { decryptField, encryptField, getKeyId } from '../crypto';
+import { decryptField, encryptField, getKeyVersion } from '../crypto';
 import { jitter } from '../jitter';
 import type {
   AdminContext,
@@ -109,7 +109,7 @@ export async function create(input: CreateLeaderInput, ctx: AdminContext): Promi
     })
     .returning();
 
-  const keyId = getKeyId();
+  const keyVersion = getKeyVersion();
   const [
     nameEnc,
     addressEnc,
@@ -137,7 +137,7 @@ export async function create(input: CreateLeaderInput, ctx: AdminContext): Promi
     adminNotesEnc,
     exactLatEnc,
     exactLngEnc,
-    keyId,
+    keyVersion,
   });
 
   await record({ action: 'create_leader', ctx, targetId: talk.id });

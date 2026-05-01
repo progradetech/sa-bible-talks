@@ -79,7 +79,7 @@ export const bibleTalksPii = pgTable('bible_talks_pii', {
   adminNotesEnc: bytea('admin_notes_enc'),
   exactLatEnc: bytea('exact_lat_enc').notNull(),
   exactLngEnc: bytea('exact_lng_enc').notNull(),
-  keyId: uuid('key_id').notNull(),
+  keyVersion: text('key_version').notNull().default('v1'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -115,7 +115,7 @@ export const visitorRequests = pgTable(
     dispatchError: text('dispatch_error'),
     ip: inet('ip'),
     userAgent: text('user_agent'),
-    keyId: uuid('key_id').notNull(),
+    keyVersion: text('key_version').notNull().default('v1'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

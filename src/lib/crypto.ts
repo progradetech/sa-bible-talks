@@ -1,43 +1,59 @@
-import { createServiceRoleClient } from './supabase/server';
+import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
-const KEY_ID = process.env.PGSODIUM_KEY_ID;
+const ALGO = 'aes-256-gcm';
+const NONCE_LEN = 12;
+const AUTH_TAG_LEN = 16;
 
-if (!KEY_ID && process.env.NODE_ENV === 'production') {
-  throw new Error('PGSODIUM_KEY_ID is required in production');
+let cachedKey: Buffer | null = null;
+
+function getKey(): Buffer {
+  if (cachedKey) return cachedKey;
+
+  const b64 = process.env.PII_MASTER_KEY;
+  if (!b64) {
+    throw new Error('PII_MASTER_KEY is not set');
+  }
+  const key = Buffer.from(b64, 'base64');
+  if (key.length !== 32) {
+    throw new Error(
+      'PII_MASTER_KEY must decode to 32 bytes — generate with `openssl rand -base64 32`',
+    );
+  }
+  cachedKey = key;
+  return key;
 }
 
-// AAD (additional authenticated data) binds the ciphertext to a specific row.
-// Decryption with a different talkId fails authentication, preventing
-// row-confusion attacks where an attacker swaps ciphertexts between rows.
-function aad(talkId: string): string {
-  return talkId;
+// AAD binds ciphertext to a specific row id, preventing row-confusion attacks
+// where an attacker swaps ciphertexts between rows. Decryption with a
+// different rowId fails authentication.
+function aad(rowId: string): Buffer {
+  return Buffer.from(rowId, 'utf8');
 }
 
-export async function encryptField(plaintext: string, talkId: string): Promise<Buffer> {
-  const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.rpc('encrypt_pii', {
-    plaintext,
-    aad: aad(talkId),
-    key_id: KEY_ID,
-  });
-
-  if (error) throw new Error(`encryption failed: ${error.message}`);
-  return Buffer.from(data as string, 'base64');
+export async function encryptField(plaintext: string, rowId: string): Promise<Buffer> {
+  const nonce = randomBytes(NONCE_LEN);
+  const cipher = createCipheriv(ALGO, getKey(), nonce);
+  cipher.setAAD(aad(rowId));
+  const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return Buffer.concat([nonce, authTag, ciphertext]);
 }
 
-export async function decryptField(ciphertext: Buffer, talkId: string): Promise<string> {
-  const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.rpc('decrypt_pii', {
-    ciphertext: ciphertext.toString('base64'),
-    aad: aad(talkId),
-    key_id: KEY_ID,
-  });
+export async function decryptField(packed: Buffer, rowId: string): Promise<string> {
+  if (packed.length < NONCE_LEN + AUTH_TAG_LEN) {
+    throw new Error('ciphertext too short');
+  }
+  const nonce = packed.subarray(0, NONCE_LEN);
+  const authTag = packed.subarray(NONCE_LEN, NONCE_LEN + AUTH_TAG_LEN);
+  const ciphertext = packed.subarray(NONCE_LEN + AUTH_TAG_LEN);
 
-  if (error) throw new Error(`decryption failed: ${error.message}`);
-  return data as string;
+  const decipher = createDecipheriv(ALGO, getKey(), nonce);
+  decipher.setAAD(aad(rowId));
+  decipher.setAuthTag(authTag);
+
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
 }
 
-export function getKeyId(): string {
-  if (!KEY_ID) throw new Error('PGSODIUM_KEY_ID is not set');
-  return KEY_ID;
+export function getKeyVersion(): string {
+  return 'v1';
 }
