@@ -33,9 +33,15 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
-  // Login page must be reachable while unauthenticated, and the auth API
-  // routes must be reachable while at AAL1 to complete MFA.
-  if (path === '/admin/login' || path.startsWith('/api/auth')) {
+  // Login page must be reachable while unauthenticated, the auth API routes
+  // must be reachable while at AAL1 to complete MFA, and setup-password
+  // must be reachable post-invite (AAL1, no TOTP enrolled yet — that page
+  // handles its own session check).
+  if (
+    path === '/admin/login' ||
+    path === '/admin/setup-password' ||
+    path.startsWith('/api/auth')
+  ) {
     return response;
   }
 

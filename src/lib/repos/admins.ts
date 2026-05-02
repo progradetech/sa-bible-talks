@@ -52,7 +52,7 @@ export class AdminAlreadyExistsError extends Error {
 }
 
 export async function inviteAdmin(
-  input: { email: string; role: AdminRole },
+  input: { email: string; role: AdminRole; redirectOrigin?: string },
   ctx: AdminContext,
 ): Promise<AdminRow> {
   const email = input.email.trim().toLowerCase();
@@ -75,9 +75,17 @@ export async function inviteAdmin(
   } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (listErr) throw new Error(`Failed to list auth users: ${listErr.message}`);
 
+  // The redirectTo param overrides Supabase's default Site URL on a per-call
+  // basis. We aim it at /auth/callback (which exchanges the code for a
+  // session) with a `next` hop into setup-password so the new admin sets a
+  // real password before TOTP enrollment.
+  const inviteOpts = input.redirectOrigin
+    ? { redirectTo: `${input.redirectOrigin}/auth/callback?next=/admin/setup-password` }
+    : undefined;
+
   let authUser = users.find((u) => u.email?.toLowerCase() === email);
   if (!authUser) {
-    const { data, error } = await supabase.auth.admin.inviteUserByEmail(email);
+    const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, inviteOpts);
     if (error) throw new Error(`Invite failed: ${error.message}`);
     authUser = data.user;
   }

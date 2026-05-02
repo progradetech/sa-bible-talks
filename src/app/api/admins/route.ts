@@ -35,7 +35,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const admin = await inviteAdmin({ email, role }, ctx);
+    // The current request's origin is the most reliable redirect base —
+    // works for production, preview deploys, and local dev without an env
+    // var that could go stale.
+    const redirectOrigin = req.nextUrl.origin;
+    const admin = await inviteAdmin({ email, role, redirectOrigin }, ctx);
     return Response.json(admin, { status: 201 });
   } catch (err) {
     if (err instanceof AdminAlreadyExistsError) {
