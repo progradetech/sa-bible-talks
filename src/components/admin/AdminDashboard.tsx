@@ -47,7 +47,11 @@ export function AdminDashboard({ leaders, adminEmail, adminRole }: Props) {
         </div>
       </header>
 
-      <main className="relative flex-1 overflow-hidden">
+      {/* min-h-0 lets a flex-1 child actually shrink to fit available space
+          rather than defaulting to min-height: auto. Without it, flex
+          children whose absolute-positioned descendants are taken out of
+          flow can fail to receive a definite height. */}
+      <main className="relative flex-1 min-h-0">
         <AdminMap
           leaders={leaders}
           selectedLeaderId={selectedLeaderId}

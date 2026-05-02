@@ -110,7 +110,18 @@ export function AdminMap({ leaders, selectedLeaderId, onSelect }: Props) {
       });
     });
 
+    // MapLibre captures its container's dimensions at init time. If the
+    // flex parent settles into its real size after the first render (or the
+    // window resizes), the canvas needs to be told. ResizeObserver covers
+    // both cases.
+    const container = containerRef.current;
+    const resizeObserver = new ResizeObserver(() => {
+      map.resize();
+    });
+    resizeObserver.observe(container);
+
     return () => {
+      resizeObserver.disconnect();
       map.remove();
       mapRef.current = null;
     };
