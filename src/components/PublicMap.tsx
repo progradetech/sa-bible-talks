@@ -162,6 +162,15 @@ export function PublicMap({ locations }: { locations: PublicLeader[] }) {
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
     mapRef.current = map;
 
+    // The MapTiler streets-v2 style occasionally references icon names that
+    // resolve to empty strings for some POI categories. MapLibre logs a warning
+    // for each missing image; supply a 1×1 transparent placeholder so the
+    // console stays quiet without changing the rendered map.
+    map.on('styleimagemissing', (e: { id: string }) => {
+      if (map.hasImage(e.id)) return;
+      map.addImage(e.id, { width: 1, height: 1, data: new Uint8Array(4) });
+    });
+
     map.on('load', () => {
       if (locations.length > 0) {
         const bounds = new maplibregl.LngLatBounds();

@@ -92,8 +92,16 @@ export function VisitorRequestModal({ leaderId, onClose }: Props) {
     return () => {
       cancelled = true;
       if (interval) clearInterval(interval);
+      // Turnstile.remove() warns if the widget element is already gone from
+      // the DOM (React unmounts the modal before this cleanup runs). The
+      // warning is cosmetic — browser GC handles the orphaned iframe — but
+      // we swallow it so the console stays useful for real issues.
       if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.remove(widgetIdRef.current);
+        try {
+          window.turnstile.remove(widgetIdRef.current);
+        } catch {
+          /* widget already removed with parent DOM */
+        }
       }
       widgetIdRef.current = null;
     };
