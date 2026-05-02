@@ -34,3 +34,37 @@ export const getSettings = cache(async (): Promise<SiteSettings> => {
     return DEFAULT;
   }
 });
+
+import { record } from '../audit';
+import type { AdminContext } from '../types';
+
+interface UpdateSettingsInput {
+  publicIndexable?: boolean;
+  defaultJitterMiles?: number;
+}
+
+export async function updateSettings(
+  input: UpdateSettingsInput,
+  ctx: AdminContext,
+): Promise<void> {
+  const updates: Partial<typeof siteSettings.$inferInsert> = {
+    updatedAt: new Date(),
+    updatedBy: ctx.adminUserId,
+  };
+  if (input.publicIndexable !== undefined) {
+    updates.publicIndexable = input.publicIndexable;
+  }
+  if (input.defaultJitterMiles !== undefined) {
+    updates.defaultJitterMiles = input.defaultJitterMiles.toString();
+  }
+
+  await db.update(siteSettings).set(updates).where(eq(siteSettings.id, 1));
+
+  if (input.publicIndexable !== undefined) {
+    await record({
+      action: 'toggle_public_indexable',
+      ctx,
+      metadata: { value: input.publicIndexable },
+    });
+  }
+}
