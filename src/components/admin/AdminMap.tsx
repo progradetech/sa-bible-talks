@@ -43,6 +43,19 @@ export function AdminMap({ leaders, selectedLeaderId, onSelect }: Props) {
       return;
     }
 
+    // TEMP DIAGNOSTICS — remove once admin map is rendering.
+    const r = containerRef.current.getBoundingClientRect();
+    console.log('[AdminMap] init: container rect', {
+      width: r.width,
+      height: r.height,
+      top: r.top,
+      left: r.left,
+    });
+    console.log(
+      '[AdminMap] init: parent main rect',
+      containerRef.current.parentElement?.getBoundingClientRect(),
+    );
+
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${apiKey}`,
@@ -51,6 +64,27 @@ export function AdminMap({ leaders, selectedLeaderId, onSelect }: Props) {
     });
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
     mapRef.current = map;
+
+    map.on('load', () => {
+      const r2 = containerRef.current?.getBoundingClientRect();
+      const canvas = containerRef.current?.querySelector('canvas');
+      const c = canvas?.getBoundingClientRect();
+      console.log('[AdminMap] load: container rect', r2 && {
+        width: r2.width,
+        height: r2.height,
+      });
+      console.log('[AdminMap] load: canvas exists?', !!canvas, c && {
+        width: c.width,
+        height: c.height,
+        opacity: canvas && getComputedStyle(canvas).opacity,
+        visibility: canvas && getComputedStyle(canvas).visibility,
+        display: canvas && getComputedStyle(canvas).display,
+      });
+    });
+
+    map.on('error', (e: { error?: Error }) => {
+      console.error('[AdminMap] map error:', e.error);
+    });
 
     map.on('styleimagemissing', (e: { id: string }) => {
       if (map.hasImage(e.id)) return;
@@ -164,5 +198,13 @@ export function AdminMap({ leaders, selectedLeaderId, onSelect }: Props) {
     }
   }, [selectedLeaderId, leaders]);
 
-  return <div ref={containerRef} className="absolute inset-0" />;
+  // TEMP: red background makes a 0-sized or hidden container visually obvious.
+  // Remove once admin map is confirmed rendering.
+  return (
+    <div
+      ref={containerRef}
+      className="absolute inset-0"
+      style={{ background: 'red' }}
+    />
+  );
 }
