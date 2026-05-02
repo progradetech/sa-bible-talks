@@ -1,0 +1,24 @@
+{
+  "name": "Node.js Dev",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  "remoteEnv": {
+    "DOTENV_PRIVATE_KEY_SABIBLETALKS": "${localEnv:DOTENV_PRIVATE_KEY_SABIBLETALKS}"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "anthropic.claude-code"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "postCreateCommand": "npm install && npm install -g @dotenvx/dotenvx",
+  "remoteUser": "node"
+}

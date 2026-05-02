@@ -16,6 +16,7 @@
     "create-admin": "dotenvx run -f .env.sabibletalks -- tsx scripts/create-admin.ts"
   },
   "dependencies": {
+    "@dotenvx/dotenvx": "^1.64.0",
     "@maptiler/sdk": "^3.7.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.48.0",
