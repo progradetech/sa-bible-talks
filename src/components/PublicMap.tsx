@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Script from 'next/script';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Language, Ministry, PublicLeader } from '@/lib/types';
 import { LegendOverlay } from './LegendOverlay';
+import { VisitorRequestModal } from './VisitorRequestModal';
 
 const SA_CENTER: [number, number] = [-98.4936, 29.4241];
 const DEFAULT_JITTER_MILES = 1.5;
@@ -97,6 +99,11 @@ function buildPopupHTML(props: Record<string, unknown>): string {
     html += `<div style="font-size:12px;color:#666;margin-top:4px;">${tags.map(escapeHTML).join(' &middot; ')}</div>`;
   }
 
+  const id = (props.id as string) || '';
+  if (id) {
+    html += `<button data-request-leader-id="${escapeHTML(id)}" style="margin-top:12px;width:100%;background:${color};color:white;border:none;padding:8px 12px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Request to Visit</button>`;
+  }
+
   html += `<div style="font-size:11px;color:#999;margin-top:10px;font-style:italic;">Approximate area</div>`;
   return html;
 }
@@ -112,6 +119,28 @@ export function PublicMap({ locations }: { locations: PublicLeader[] }) {
     () => new Set(ALL_LANGUAGES),
   );
   const [kidFriendlyOnly, setKidFriendlyOnly] = useState(false);
+  const [requestLeaderId, setRequestLeaderId] = useState<string | null>(null);
+
+  // Document-level click delegation for the "Request to Visit" button
+  // inside MapLibre popup HTML (which is rendered as raw HTML, not React).
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const button = target.closest<HTMLElement>('[data-request-leader-id]');
+      if (!button) return;
+      const leaderId = button.getAttribute('data-request-leader-id');
+      if (!leaderId) return;
+      e.preventDefault();
+      setRequestLeaderId(leaderId);
+      // Close any open MapLibre popups so they don't sit behind the modal.
+      document
+        .querySelectorAll<HTMLElement>('.maplibregl-popup-close-button')
+        .forEach((el) => el.click());
+    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
 
   // Initialize map once. The locations prop is a stable server-rendered value;
   // re-renders from filter state changes don't re-create the map.
@@ -246,6 +275,10 @@ export function PublicMap({ locations }: { locations: PublicLeader[] }) {
 
   return (
     <>
+      <Script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+        strategy="afterInteractive"
+      />
       <div ref={containerRef} className="w-full h-full" />
       <LegendOverlay
         activeMinistries={activeMinistries}
@@ -255,6 +288,10 @@ export function PublicMap({ locations }: { locations: PublicLeader[] }) {
         kidFriendlyOnly={kidFriendlyOnly}
         onKidFriendlyToggle={setKidFriendlyOnly}
         ministryColors={MINISTRY_COLORS}
+      />
+      <VisitorRequestModal
+        leaderId={requestLeaderId}
+        onClose={() => setRequestLeaderId(null)}
       />
     </>
   );
