@@ -1,15 +1,19 @@
-export default function Home() {
+import { listPublic } from '@/lib/repos/leaders';
+import { PublicMap } from '@/components/PublicMap';
+
+export const revalidate = 60;
+
+export default async function Home() {
+  const locations = await listPublic();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-2xl flex-col items-center justify-center gap-6 p-8 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
+    <main className="relative w-full h-screen">
+      <header className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur rounded-lg shadow-lg px-5 py-2">
+        <h1 className="text-base font-semibold whitespace-nowrap text-zinc-950 dark:text-zinc-50">
           San Antonio Bible Talks
         </h1>
-        <p className="text-lg text-zinc-600 dark:text-zinc-400">
-          Map coming soon. This is the scaffolded shell — the public map will render here once the
-          data layer and provisioning steps are complete.
-        </p>
-      </main>
-    </div>
+      </header>
+      <PublicMap locations={locations} />
+    </main>
   );
 }
