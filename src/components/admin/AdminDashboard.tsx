@@ -18,7 +18,11 @@ export function AdminDashboard({ leaders, adminEmail, adminRole }: Props) {
     leaders.find((l) => l.id === selectedLeaderId) ?? null;
 
   return (
-    <div className="h-screen flex flex-col bg-zinc-100 dark:bg-zinc-950">
+    // `fixed inset-0` pins the dashboard to the viewport edges directly,
+    // bypassing the flex sizing in <body className="min-h-full flex flex-col">
+    // which was collapsing h-screen on this wrapper to ~367px (then leaving
+    // <main> with only 327px to flex into and the map canvas effectively 0px).
+    <div className="fixed inset-0 flex flex-col bg-zinc-100 dark:bg-zinc-950">
       <header className="z-30 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-4 py-2 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <h1 className="text-base font-semibold whitespace-nowrap text-zinc-950 dark:text-zinc-50">
