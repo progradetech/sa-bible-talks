@@ -1,0 +1,39 @@
+name: Weekly database backup
+
+on:
+  schedule:
+    # Sundays at 09:00 UTC = 03:00 / 04:00 CT depending on DST.
+    - cron: '0 9 * * 0'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install pg_dump (Postgres 16 client)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-16
+
+      - name: Dump database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          # --no-owner / --no-acl: dump won't try to set ownership on restore,
+          # which avoids permission errors when restoring to a different DB.
+          pg_dump --no-owner --no-acl --format=custom "$DATABASE_URL" > backup-$DATE.dump
+          gzip -9 backup-$DATE.dump
+          ls -lh backup-$DATE.dump.gz
+          echo "BACKUP_FILE=backup-$DATE.dump.gz" >> $GITHUB_ENV
+
+      - name: Upload to Backblaze B2
+        env:
+          B2_KEY_ID: ${{ secrets.BACKBLAZE_B2_KEY_ID }}
+          B2_APP_KEY: ${{ secrets.BACKBLAZE_B2_APP_KEY }}
+          B2_BUCKET: ${{ secrets.BACKBLAZE_B2_BUCKET }}
+        run: |
+          pip install --quiet b2
+          b2 account authorize "$B2_KEY_ID" "$B2_APP_KEY"
+          b2 file upload "$B2_BUCKET" "$BACKUP_FILE" "weekly/$BACKUP_FILE"

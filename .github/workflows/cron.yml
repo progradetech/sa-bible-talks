@@ -1,0 +1,55 @@
+name: Cron tasks
+
+on:
+  schedule:
+    # Daily at 09:00 UTC for the purge job.
+    - cron: '0 9 * * *'
+    # Every hour for the dispatch retry.
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Which task to run manually'
+        type: choice
+        options:
+          - purge
+          - dispatch-retry
+          - both
+        default: both
+
+jobs:
+  daily-purge:
+    if: |
+      github.event.schedule == '0 9 * * *' ||
+      (github.event_name == 'workflow_dispatch' &&
+        (inputs.task == 'purge' || inputs.task == 'both'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Hit purge endpoint
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --show-error --silent \
+            -X POST "$SITE_URL/api/cron/purge" \
+            -H "Authorization: Bearer $CRON_SECRET"
+          echo
+
+  hourly-retry:
+    if: |
+      github.event.schedule == '0 * * * *' ||
+      (github.event_name == 'workflow_dispatch' &&
+        (inputs.task == 'dispatch-retry' || inputs.task == 'both'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Hit dispatch-retry endpoint
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --show-error --silent \
+            -X POST "$SITE_URL/api/cron/dispatch-retry" \
+            -H "Authorization: Bearer $CRON_SECRET"
+          echo

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNotNull } from 'drizzle-orm';
 import { bibleTalksPii, db, visitorRequests } from '@/db';
 import { record } from '../audit';
 import { decryptField, encryptField, getKeyVersion } from '../crypto';
@@ -157,4 +157,22 @@ async function dispatch(requestId: string): Promise<boolean> {
 export async function redispatch(requestId: string, ctx: AdminContext): Promise<boolean> {
   void ctx;
   return dispatch(requestId);
+}
+
+// Cron-side retry: pick up requests that errored on first dispatch and try
+// again. Caps at 20 per run so a long-stuck batch doesn't time out the cron.
+export async function retryPending(): Promise<{ retried: number; succeeded: number }> {
+  const pending = await db
+    .select()
+    .from(visitorRequests)
+    .where(
+      and(eq(visitorRequests.dispatched, false), isNotNull(visitorRequests.dispatchError)),
+    )
+    .limit(20);
+
+  let succeeded = 0;
+  for (const r of pending) {
+    if (await dispatch(r.id)) succeeded++;
+  }
+  return { retried: pending.length, succeeded };
 }
