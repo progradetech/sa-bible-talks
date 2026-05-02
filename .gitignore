@@ -30,9 +30,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (all variants) — but track .env.example as the template
-.env*
-!.env.example
+# dotenvx — encrypted .env.sabibletalks IS committed (safe; values are
+# encrypted with the project's public key). Ignore the private-key file
+# and Next.js's local-override pattern.
+.env.keys
+.env.local
+.env.*.local
+.env
 
 # vercel
 .vercel

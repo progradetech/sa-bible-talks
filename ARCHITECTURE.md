@@ -604,26 +604,51 @@ Single page, footer link.
 
 ## 10. Operations
 
+### Secrets workflow (dotenvx)
+
+Local development uses [dotenvx](https://dotenvx.com) so the project's secrets can be **committed to the repo as ciphertext** while the decryption key stays out-of-repo.
+
+| Concern | Where it lives |
+|---|---|
+| Encrypted env file | `.env.sabibletalks` (committed, public-key-encrypted by dotenvx) |
+| Private key | `~/.config/dotenvx/sa-bible-talks.zsh` exporting `DOTENV_PRIVATE_KEY_SABIBLETALKS=...`, sourced from `~/.zshrc` |
+| Project-local key cache | `.env.keys` (gitignored; safe to delete after the shell-export is in place) |
+| Plaintext local override | `.env.local` (gitignored, optional, for ad-hoc local-only overrides) |
+| Production runtime | Vercel Project Settings → Environment Variables (Vercel doesn't use dotenvx; the encrypted file in the repo is inert at build time because Vercel's vars take precedence) |
+
+Every npm script that needs decrypted env vars wraps the underlying tool:
+
+```
+"dev":           "dotenvx run -f .env.sabibletalks -- next dev"
+"db:push":       "dotenvx run -f .env.sabibletalks -- drizzle-kit push"
+"create-admin":  "dotenvx run -f .env.sabibletalks -- tsx scripts/create-admin.ts"
+"import-csv":    "dotenvx run -f .env.sabibletalks -- tsx scripts/import-csv.ts"
+```
+
+Onboarding a new operator: install dotenvx (`curl -sfS https://dotenvx.sh | sh`), receive the private key from a current operator via password manager, drop it into their `~/.config/dotenvx/sa-bible-talks.zsh`, source `~/.zshrc`, run `npm install`. They can now run any project script.
+
+Secret rotation: rotate the value, run `dotenvx encrypt -f .env.sabibletalks` to re-encrypt, commit. Update the same value in Vercel's dashboard. No private-key change unless you're rotating the encryption keypair itself.
+
 ### Environment variables
 
 ```bash
-# Vercel project env
 NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon>
-SUPABASE_SERVICE_ROLE_KEY=<service-role>     # never exposed to client
-DATABASE_URL=<pooled-postgres-uri>           # for Drizzle migrations
-PGSODIUM_KEY_ID=<uuid-from-vault>            # reference, not key material
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable key>
+SUPABASE_SERVICE_ROLE_KEY=<secret key>           # never exposed to client
+DATABASE_URL=<pooled-postgres-uri>               # transaction pooler, port 6543
+PII_MASTER_KEY=<32 bytes base64>                 # AES-256-GCM master key
 
-NEXT_PUBLIC_MAPTILER_KEY=<maptiler-key>      # tile loads from browser
-MAPTILER_GEOCODE_KEY=<maptiler-key>          # server-side geocode (same key)
+NEXT_PUBLIC_MAPTILER_KEY=<maptiler-key>          # tile loads from browser
+MAPTILER_GEOCODE_KEY=<maptiler-key>              # server-side geocode (same key)
 
 GMAIL_SMTP_USER=sa.bibletalks@gmail.com
 GMAIL_SMTP_APP_PASSWORD=<16-char-app-password>
 
-CLOUDFLARE_TURNSTILE_SITE_KEY=<site>
+NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY=<site>
 CLOUDFLARE_TURNSTILE_SECRET=<secret>
 
-BACKBLAZE_B2_KEY_ID=<key-id>                 # for backup workflow
+# GitHub Actions secrets only — not in Vercel or local .env
+BACKBLAZE_B2_KEY_ID=<key-id>
 BACKBLAZE_B2_APP_KEY=<app-key>
 BACKBLAZE_B2_BUCKET=sa-bible-talks-backups
 ```

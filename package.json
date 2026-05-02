@@ -4,16 +4,16 @@
   "private": true,
   "description": "Privacy-first map of San Antonio bible talks and small groups",
   "scripts": {
-    "dev": "next dev",
+    "dev": "dotenvx run -f .env.sabibletalks -- next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
-    "import-csv": "tsx --env-file=.env.local scripts/import-csv.ts",
-    "create-admin": "tsx --env-file=.env.local scripts/create-admin.ts"
+    "db:generate": "dotenvx run -f .env.sabibletalks -- drizzle-kit generate",
+    "db:migrate": "dotenvx run -f .env.sabibletalks -- drizzle-kit migrate",
+    "db:push": "dotenvx run -f .env.sabibletalks -- drizzle-kit push",
+    "db:studio": "dotenvx run -f .env.sabibletalks -- drizzle-kit studio",
+    "import-csv": "dotenvx run -f .env.sabibletalks -- tsx scripts/import-csv.ts",
+    "create-admin": "dotenvx run -f .env.sabibletalks -- tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "@maptiler/sdk": "^3.7.0",
@@ -28,6 +28,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@dotenvx/dotenvx": "^1.0.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^7.0.0",
