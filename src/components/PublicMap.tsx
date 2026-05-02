@@ -1,15 +1,19 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import type { PublicLeader } from '@/lib/types';
+import type { Language, Ministry, PublicLeader } from '@/lib/types';
+import { LegendOverlay } from './LegendOverlay';
 
 const SA_CENTER: [number, number] = [-98.4936, 29.4241];
 const DEFAULT_JITTER_MILES = 1.5;
 const EARTH_RADIUS_MILES = 3959;
 
-const MINISTRY_COLORS: Record<string, string> = {
+const ALL_MINISTRIES: Ministry[] = ['Family', 'YoPro', 'Campus', 'Singles', 'Spanish'];
+const ALL_LANGUAGES: Language[] = ['English', 'Spanish', 'Bilingual'];
+
+const MINISTRY_COLORS: Record<Ministry, string> = {
   Family: '#2196F3',
   YoPro: '#FF9800',
   Campus: '#9C27B0',
@@ -17,9 +21,8 @@ const MINISTRY_COLORS: Record<string, string> = {
   Spanish: '#4CAF50',
 };
 
-// Generate a polygon approximation of a real-world circle so MapLibre
-// renders it in geographic units (miles) rather than fixed pixels. 64 sides
-// is enough for a smooth-looking circle at any zoom level.
+// 64-sided polygon approximation of a real-world circle so MapLibre renders
+// in geographic units (miles), not fixed pixels.
 function circlePolygon(
   lat: number,
   lng: number,
@@ -47,10 +50,71 @@ function circlePolygon(
   return coords;
 }
 
+function buildFilterExpression(
+  activeMinistries: Set<Ministry>,
+  activeLanguages: Set<Language>,
+  kidFriendlyOnly: boolean,
+): maplibregl.FilterSpecification {
+  const conditions: maplibregl.ExpressionSpecification[] = [
+    ['in', ['get', 'ministry'], ['literal', Array.from(activeMinistries)]],
+    ['in', ['get', 'language'], ['literal', Array.from(activeLanguages)]],
+  ];
+  if (kidFriendlyOnly) {
+    conditions.push(['==', ['get', 'kidFriendly'], true]);
+  }
+  return ['all', ...conditions];
+}
+
+function escapeHTML(s: string): string {
+  return s.replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
+  );
+}
+
+function buildPopupHTML(props: Record<string, unknown>): string {
+  const groupName = (props.groupName as string) || '';
+  const ministry = (props.ministry as string) || '';
+  const meetingInfo = (props.meetingInfo as string) || '';
+  const language = (props.language as string) || '';
+  const kidFriendly = props.kidFriendly === true || props.kidFriendly === 'true';
+  const color = (props.color as string) || '#999';
+
+  let html = '';
+  if (groupName) {
+    html += `<div style="font-weight:600;font-size:15px;margin-bottom:6px;color:#111;">${escapeHTML(groupName)}</div>`;
+  }
+  html += `<div style="font-size:13px;color:#444;line-height:1.4;">`;
+  html += `<span style="color:${color};font-weight:600;">${escapeHTML(ministry)} ministry</span>`;
+  if (meetingInfo) html += ` &middot; ${escapeHTML(meetingInfo)}`;
+  html += `</div>`;
+
+  const tags: string[] = [];
+  if (language && language !== 'English') tags.push(language);
+  if (kidFriendly) tags.push('Kid-friendly');
+  if (tags.length > 0) {
+    html += `<div style="font-size:12px;color:#666;margin-top:4px;">${tags.map(escapeHTML).join(' &middot; ')}</div>`;
+  }
+
+  html += `<div style="font-size:11px;color:#999;margin-top:10px;font-style:italic;">Approximate area</div>`;
+  return html;
+}
+
 export function PublicMap({ locations }: { locations: PublicLeader[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
 
+  const [activeMinistries, setActiveMinistries] = useState<Set<Ministry>>(
+    () => new Set(ALL_MINISTRIES),
+  );
+  const [activeLanguages, setActiveLanguages] = useState<Set<Language>>(
+    () => new Set(ALL_LANGUAGES),
+  );
+  const [kidFriendlyOnly, setKidFriendlyOnly] = useState(false);
+
+  // Initialize map once. The locations prop is a stable server-rendered value;
+  // re-renders from filter state changes don't re-create the map.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
@@ -66,13 +130,10 @@ export function PublicMap({ locations }: { locations: PublicLeader[] }) {
       center: SA_CENTER,
       zoom: 10,
     });
-
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
     mapRef.current = map;
 
     map.on('load', () => {
-      // Fit to the bounds of all visible leaders, falling back to SA center
-      // if the dataset is empty (e.g., everyone hidden via Tier-4 escape hatch).
       if (locations.length > 0) {
         const bounds = new maplibregl.LngLatBounds();
         locations.forEach((loc) => bounds.extend([loc.approxLng, loc.approxLat]));
@@ -94,6 +155,10 @@ export function PublicMap({ locations }: { locations: PublicLeader[] }) {
         properties: {
           id: loc.id,
           ministry: loc.ministry,
+          language: loc.language,
+          kidFriendly: loc.kidFriendly,
+          meetingInfo: loc.meetingInfo ?? '',
+          groupName: loc.groupName ?? '',
           color: MINISTRY_COLORS[loc.ministry] ?? '#999',
         },
       }));
@@ -107,20 +172,32 @@ export function PublicMap({ locations }: { locations: PublicLeader[] }) {
         id: 'ministry-fill',
         type: 'fill',
         source: 'ministry-areas',
-        paint: {
-          'fill-color': ['get', 'color'],
-          'fill-opacity': 0.18,
-        },
+        paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.18 },
       });
 
       map.addLayer({
         id: 'ministry-line',
         type: 'line',
         source: 'ministry-areas',
-        paint: {
-          'line-color': ['get', 'color'],
-          'line-width': 2,
-        },
+        paint: { 'line-color': ['get', 'color'], 'line-width': 2 },
+      });
+
+      // Click → popup
+      map.on('click', 'ministry-fill', (e) => {
+        const feature = e.features?.[0];
+        if (!feature) return;
+        new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '280px' })
+          .setLngLat(e.lngLat)
+          .setHTML(buildPopupHTML(feature.properties))
+          .addTo(map);
+      });
+
+      // Cursor feedback on hover
+      map.on('mouseenter', 'ministry-fill', () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+      map.on('mouseleave', 'ministry-fill', () => {
+        map.getCanvas().style.cursor = '';
       });
     });
 
@@ -130,5 +207,55 @@ export function PublicMap({ locations }: { locations: PublicLeader[] }) {
     };
   }, [locations]);
 
-  return <div ref={containerRef} className="w-full h-full" />;
+  // Apply filter expression whenever toggles change.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const apply = () => {
+      if (!map.getLayer('ministry-fill')) return;
+      const expr = buildFilterExpression(activeMinistries, activeLanguages, kidFriendlyOnly);
+      map.setFilter('ministry-fill', expr);
+      map.setFilter('ministry-line', expr);
+    };
+
+    if (map.isStyleLoaded() && map.getLayer('ministry-fill')) {
+      apply();
+    } else {
+      map.once('idle', apply);
+    }
+  }, [activeMinistries, activeLanguages, kidFriendlyOnly]);
+
+  const toggleMinistry = (m: Ministry) => {
+    setActiveMinistries((prev) => {
+      const next = new Set(prev);
+      if (next.has(m)) next.delete(m);
+      else next.add(m);
+      return next;
+    });
+  };
+
+  const toggleLanguage = (l: Language) => {
+    setActiveLanguages((prev) => {
+      const next = new Set(prev);
+      if (next.has(l)) next.delete(l);
+      else next.add(l);
+      return next;
+    });
+  };
+
+  return (
+    <>
+      <div ref={containerRef} className="w-full h-full" />
+      <LegendOverlay
+        activeMinistries={activeMinistries}
+        onToggleMinistry={toggleMinistry}
+        activeLanguages={activeLanguages}
+        onToggleLanguage={toggleLanguage}
+        kidFriendlyOnly={kidFriendlyOnly}
+        onKidFriendlyToggle={setKidFriendlyOnly}
+        ministryColors={MINISTRY_COLORS}
+      />
+    </>
+  );
 }
