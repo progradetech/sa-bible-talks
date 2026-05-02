@@ -69,6 +69,7 @@ export async function listPrivate(ctx: AdminContext): Promise<PrivateLeader[]> {
       return {
         ...toPublic(talk),
         groupName: talk.groupName,
+        showGroupName: talk.showGroupName,
         name,
         address,
         email,
@@ -149,13 +150,69 @@ export async function update(
   input: UpdateLeaderInput,
   ctx: AdminContext,
 ): Promise<void> {
-  // Implementation deferred to admin-CRUD step. Will mirror create() with
-  // partial-update semantics: re-jitter when exact coords change, re-encrypt
-  // changed PII fields, leave untouched fields alone.
-  void id;
-  void input;
-  void ctx;
-  throw new Error('not implemented');
+  // Public columns
+  const publicUpdates: Partial<typeof bibleTalks.$inferInsert> = {
+    updatedAt: new Date(),
+  };
+  if (input.ministry !== undefined) publicUpdates.ministry = input.ministry;
+  if (input.meetingInfo !== undefined)
+    publicUpdates.meetingInfo = input.meetingInfo || null;
+  if (input.language !== undefined) publicUpdates.language = input.language;
+  if (input.kidFriendly !== undefined) publicUpdates.kidFriendly = input.kidFriendly;
+  if (input.groupName !== undefined) publicUpdates.groupName = input.groupName || null;
+  if (input.showGroupName !== undefined) publicUpdates.showGroupName = input.showGroupName;
+  if (input.hideFromPublicMap !== undefined)
+    publicUpdates.hideFromPublicMap = input.hideFromPublicMap;
+  if (input.isPaused !== undefined) publicUpdates.isPaused = input.isPaused;
+  if (input.isActive !== undefined) publicUpdates.isActive = input.isActive;
+  if (input.jitterMiles !== undefined)
+    publicUpdates.jitterMiles =
+      input.jitterMiles !== null ? input.jitterMiles?.toString() : null;
+
+  // Re-jitter approx coords when exact coords change. Use new jitterMiles if
+  // provided, else fall back to default (1.5).
+  if (input.exactLat !== undefined && input.exactLng !== undefined) {
+    const miles = input.jitterMiles ?? DEFAULT_JITTER_MILES;
+    const approx = jitter(input.exactLat, input.exactLng, miles);
+    publicUpdates.approxLat = approx.lat;
+    publicUpdates.approxLng = approx.lng;
+  }
+
+  await db.update(bibleTalks).set(publicUpdates).where(eq(bibleTalks.id, id));
+
+  // PII columns — encrypt with the row id as AAD so the ciphertext stays
+  // bound to this leader's record.
+  const piiUpdates: Partial<typeof bibleTalksPii.$inferInsert> = {
+    updatedAt: new Date(),
+  };
+  if (input.name !== undefined) piiUpdates.nameEnc = await encryptField(input.name, id);
+  if (input.address !== undefined)
+    piiUpdates.addressEnc = await encryptField(input.address, id);
+  if (input.email !== undefined) piiUpdates.emailEnc = await encryptField(input.email, id);
+  if (input.phone !== undefined) {
+    piiUpdates.phoneEnc = input.phone ? await encryptField(input.phone, id) : null;
+  }
+  if (input.adminNotes !== undefined) {
+    piiUpdates.adminNotesEnc = input.adminNotes
+      ? await encryptField(input.adminNotes, id)
+      : null;
+  }
+  if (input.exactLat !== undefined) {
+    piiUpdates.exactLatEnc = await encryptField(input.exactLat.toString(), id);
+  }
+  if (input.exactLng !== undefined) {
+    piiUpdates.exactLngEnc = await encryptField(input.exactLng.toString(), id);
+  }
+
+  // Only run the PII update when something other than updatedAt changed.
+  if (Object.keys(piiUpdates).length > 1) {
+    await db
+      .update(bibleTalksPii)
+      .set(piiUpdates)
+      .where(eq(bibleTalksPii.bibleTalkId, id));
+  }
+
+  await record({ action: 'update_leader', ctx, targetId: id });
 }
 
 export async function remove(id: string, ctx: AdminContext): Promise<void> {

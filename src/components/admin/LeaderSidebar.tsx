@@ -15,9 +15,10 @@ interface Props {
   leaders: PrivateLeader[];
   selectedLeaderId: string | null;
   onSelect: (id: string | null) => void;
+  onCreate: () => void;
 }
 
-export function LeaderSidebar({ leaders, selectedLeaderId, onSelect }: Props) {
+export function LeaderSidebar({ leaders, selectedLeaderId, onSelect, onCreate }: Props) {
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -34,7 +35,15 @@ export function LeaderSidebar({ leaders, selectedLeaderId, onSelect }: Props) {
 
   return (
     <aside className="absolute left-3 top-3 bottom-3 z-10 w-72 bg-white/95 dark:bg-zinc-900/95 backdrop-blur rounded-lg shadow-lg flex flex-col text-zinc-950 dark:text-zinc-50">
-      <div className="p-3 border-b border-zinc-200 dark:border-zinc-800">
+      <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 space-y-2">
+        <button
+          type="button"
+          onClick={onCreate}
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        >
+          <span aria-hidden>+</span>
+          <span>Add leader</span>
+        </button>
         <input
           type="search"
           placeholder="Search name, ministry, address, email…"
@@ -42,7 +51,7 @@ export function LeaderSidebar({ leaders, selectedLeaderId, onSelect }: Props) {
           onChange={(e) => setSearch(e.target.value)}
           className="w-full px-3 py-1.5 text-sm border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">
+        <div className="text-xs text-zinc-500 dark:text-zinc-400">
           {filtered.length} of {leaders.length} {leaders.length === 1 ? 'leader' : 'leaders'}
         </div>
       </div>

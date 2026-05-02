@@ -6,9 +6,10 @@ import type { PrivateLeader } from '@/lib/types';
 interface Props {
   leader: PrivateLeader | null;
   onClose: () => void;
+  onEdit: () => void;
 }
 
-export function LeaderDrawer({ leader, onClose }: Props) {
+export function LeaderDrawer({ leader, onClose, onEdit }: Props) {
   if (!leader) return null;
 
   return (
@@ -20,13 +21,21 @@ export function LeaderDrawer({ leader, onClose }: Props) {
             {leader.ministry} ministry
           </div>
         </div>
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 -m-1 leading-none flex-shrink-0"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={onEdit}
+            className="px-2.5 py-1 text-xs font-medium border border-zinc-300 dark:border-zinc-700 rounded hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            Edit
+          </button>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 -m-1 leading-none"
+          >
+            ✕
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -118,9 +127,6 @@ export function LeaderDrawer({ leader, onClose }: Props) {
           />
         </div>
 
-        <div className="pt-2 text-xs text-zinc-500 dark:text-zinc-400 italic">
-          Edit in slice 4c.
-        </div>
       </div>
     </aside>
   );

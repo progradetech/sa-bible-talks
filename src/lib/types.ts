@@ -42,6 +42,7 @@ export interface PrivateLeader extends PublicLeader {
   adminNotes: string | null;
   exactLat: number;
   exactLng: number;
+  showGroupName: boolean;
   hideFromPublicMap: boolean;
   isPaused: boolean;
   isActive: boolean;
