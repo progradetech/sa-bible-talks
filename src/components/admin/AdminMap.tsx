@@ -25,12 +25,18 @@ export function AdminMap({ leaders, selectedLeaderId, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
 
-  // onSelect captured in a ref so it can be called from MapLibre's click
-  // handler without forcing the init useEffect to re-run on every render.
+  // onSelect and selectedLeaderId captured in refs so the MapLibre click
+  // handler (attached once at init) can read latest values without forcing
+  // the init useEffect to re-run on every render.
   const onSelectRef = useRef(onSelect);
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  const selectedLeaderIdRef = useRef(selectedLeaderId);
+  useEffect(() => {
+    selectedLeaderIdRef.current = selectedLeaderId;
+  }, [selectedLeaderId]);
 
   // Initialize the map once. The leaders array is server-rendered and
   // stable across client re-renders.
@@ -99,7 +105,10 @@ export function AdminMap({ leaders, selectedLeaderId, onSelect }: Props) {
       map.on('click', 'leader-points', (e) => {
         const feature = e.features?.[0];
         const id = feature?.properties?.id as string | undefined;
-        if (id) onSelectRef.current(id);
+        if (!id) return;
+        // Toggle: clicking the already-selected pin deselects, matching
+        // the sidebar's behavior.
+        onSelectRef.current(selectedLeaderIdRef.current === id ? null : id);
       });
 
       map.on('mouseenter', 'leader-points', () => {
