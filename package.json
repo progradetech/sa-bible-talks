@@ -12,8 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "import-csv": "tsx scripts/import-csv.ts",
-    "create-admin": "tsx scripts/create-admin.ts"
+    "import-csv": "tsx --env-file=.env.local scripts/import-csv.ts",
+    "create-admin": "tsx --env-file=.env.local scripts/create-admin.ts"
   },
   "dependencies": {
     "@maptiler/sdk": "^3.7.0",
