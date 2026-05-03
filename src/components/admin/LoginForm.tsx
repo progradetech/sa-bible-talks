@@ -150,6 +150,15 @@ export function LoginForm() {
       return;
     }
 
+    // Record login server-side so admin_users.last_login_at updates and a
+    // login_success audit entry is written. Best-effort — a network blip
+    // shouldn't block the admin from getting into the app.
+    try {
+      await fetch('/api/auth/record-login', { method: 'POST' });
+    } catch {
+      /* swallow — proceed to /admin regardless */
+    }
+
     setStep('redirecting');
     router.push('/admin');
     router.refresh();
