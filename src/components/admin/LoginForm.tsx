@@ -21,6 +21,27 @@ export function LoginForm() {
   } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lockedUntil, setLockedUntil] = useState<Date | null>(null);
+  const [now, setNow] = useState(() => new Date());
+
+  // Tick `now` every 30s while locked so the countdown text updates and the
+  // banner / button auto-clears the moment the lockout expires.
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const tick = () => {
+      const current = new Date();
+      setNow(current);
+      if (current >= lockedUntil) setLockedUntil(null);
+    };
+    tick();
+    const interval = setInterval(tick, 30 * 1000);
+    return () => clearInterval(interval);
+  }, [lockedUntil]);
+
+  const isLocked = lockedUntil !== null && lockedUntil > now;
+  const lockoutMinutesLeft = isLocked
+    ? Math.max(1, Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000))
+    : 0;
 
   // On mount, check if there's already a session at any stage and skip steps.
   useEffect(() => {
@@ -34,6 +55,26 @@ export function LoginForm() {
       if (!user) {
         setStep('credentials');
         return;
+      }
+
+      // If the signed-in user's admin row is locked out, the proxy already
+      // bounced them here. Surface the lockout banner instead of letting them
+      // see a confusing "Sign in" form when they can't actually sign in.
+      try {
+        const lockRes = await fetch('/api/auth/check-lockout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: user.email }),
+        });
+        const lockData = (await lockRes.json()) as {
+          locked: boolean;
+          lockedUntil?: string;
+        };
+        if (lockData.locked && lockData.lockedUntil) {
+          setLockedUntil(new Date(lockData.lockedUntil));
+        }
+      } catch {
+        /* swallow — non-blocking */
       }
 
       const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -73,13 +114,66 @@ export function LoginForm() {
     setSubmitting(true);
     setError(null);
 
+    const emailLower = email.trim().toLowerCase();
+
+    // Check existing lockout state before bothering Supabase. The endpoint
+    // is public but returns the same shape for unknown emails, so it doesn't
+    // leak which addresses are admins.
+    try {
+      const lockRes = await fetch('/api/auth/check-lockout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailLower }),
+      });
+      const lockData = (await lockRes.json()) as {
+        locked: boolean;
+        lockedUntil?: string;
+      };
+      if (lockData.locked && lockData.lockedUntil) {
+        setLockedUntil(new Date(lockData.lockedUntil));
+        setSubmitting(false);
+        return;
+      }
+    } catch {
+      // Lockout check failed (network blip) — proceed; Supabase still
+      // rate-limits at the auth layer regardless.
+    }
+
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
+      email: emailLower,
       password,
     });
 
     if (signInError) {
-      setError(signInError.message);
+      // Tell the server to bump the failure counter. Response tells us if
+      // this attempt tripped the lockout (or how many attempts remain).
+      let attemptsLeft: number | undefined;
+      try {
+        const failRes = await fetch('/api/auth/record-failure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailLower }),
+        });
+        const failData = (await failRes.json()) as {
+          locked: boolean;
+          attemptsLeft?: number;
+          lockedUntil?: string;
+        };
+        if (failData.locked && failData.lockedUntil) {
+          setLockedUntil(new Date(failData.lockedUntil));
+          setSubmitting(false);
+          return;
+        }
+        attemptsLeft = failData.attemptsLeft;
+      } catch {
+        /* swallow — fall through to generic error */
+      }
+
+      setError(
+        attemptsLeft !== undefined && attemptsLeft <= 3
+          ? `${signInError.message}. ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} left before lockout.`
+          : signInError.message,
+      );
       setSubmitting(false);
       return;
     }
@@ -175,6 +269,20 @@ export function LoginForm() {
   if (step === 'credentials') {
     return (
       <form onSubmit={handleCredentialsSubmit} className="space-y-4">
+        {isLocked && (
+          <div
+            role="alert"
+            className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-900 rounded-md"
+          >
+            <div className="text-sm font-medium text-red-700 dark:text-red-300">
+              Account locked
+            </div>
+            <div className="text-xs text-red-600 dark:text-red-400 mt-1">
+              Too many failed login attempts. Try again in {lockoutMinutesLeft} minute
+              {lockoutMinutesLeft === 1 ? '' : 's'}.
+            </div>
+          </div>
+        )}
         <div>
           <label className="block text-xs font-medium mb-1">Email</label>
           <input
@@ -183,7 +291,8 @@ export function LoginForm() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isLocked}
+            className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           />
         </div>
         <div>
@@ -194,16 +303,19 @@ export function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="current-password"
-            className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isLocked}
+            className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           />
         </div>
-        {error && <div className="text-sm text-red-600 dark:text-red-400">{error}</div>}
+        {error && !isLocked && (
+          <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
+        )}
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || isLocked}
           className="w-full py-2 px-4 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {submitting ? 'Signing in…' : 'Sign in'}
+          {isLocked ? 'Locked' : submitting ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
     );
