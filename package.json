@@ -14,7 +14,8 @@
     "db:studio": "dotenvx run -f .env.sabibletalks -- drizzle-kit studio",
     "import-csv": "dotenvx run -f .env.sabibletalks -- tsx scripts/import-csv.ts",
     "create-admin": "dotenvx run -f .env.sabibletalks -- tsx scripts/create-admin.ts",
-    "set-admin-password": "dotenvx run -f .env.sabibletalks -- tsx scripts/set-admin-password.ts"
+    "set-admin-password": "dotenvx run -f .env.sabibletalks -- tsx scripts/set-admin-password.ts",
+    "remove-admin": "dotenvx run -f .env.sabibletalks -- tsx scripts/remove-admin.ts"
   },
   "dependencies": {
     "@dotenvx/dotenvx": "^1.64.0",
