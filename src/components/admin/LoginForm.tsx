@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { GoogleButton } from './GoogleButton';
 
 type Step = 'init' | 'credentials' | 'enroll' | 'verify' | 'redirecting';
 
@@ -266,6 +267,22 @@ export function LoginForm() {
     );
   }
 
+  async function handleGoogleSignIn() {
+    setSubmitting(true);
+    setError(null);
+    const { error: oauthErr } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/admin/login`,
+      },
+    });
+    if (oauthErr) {
+      setError(oauthErr.message);
+      setSubmitting(false);
+    }
+    // On success the browser is redirected to Google.
+  }
+
   if (step === 'credentials') {
     return (
       <form onSubmit={handleCredentialsSubmit} className="space-y-4">
@@ -317,6 +334,16 @@ export function LoginForm() {
         >
           {isLocked ? 'Locked' : submitting ? 'Signing in…' : 'Sign in'}
         </button>
+
+        <div className="flex items-center gap-3 text-xs text-zinc-400">
+          <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800" />
+          <span>or</span>
+          <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800" />
+        </div>
+
+        <GoogleButton onClick={handleGoogleSignIn} disabled={submitting || isLocked}>
+          Continue with Google
+        </GoogleButton>
       </form>
     );
   }
