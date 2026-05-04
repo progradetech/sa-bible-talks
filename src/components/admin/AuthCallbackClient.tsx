@@ -19,17 +19,9 @@ export function AuthCallbackClient() {
     async function run() {
       const next = params?.get('next') || '/admin/setup-password';
 
-      // TEMP DIAGNOSTICS — remove once Google sign-in works.
-      console.log('[AuthCallback] run', {
-        next,
-        hasCode: params?.has('code'),
-        hash: window.location.hash,
-        urlError: params?.get('error'),
-        urlErrorDesc: params?.get('error_description'),
-      });
-
-      // Surface OAuth provider errors that arrive as ?error=... before we
-      // try to exchange (Google rejected, user denied, etc.).
+      // Surface OAuth provider errors that arrive as ?error=... (Google
+      // rejected, code-exchange failed, user denied consent, etc.) before
+      // we try our own exchange.
       const oauthError = params?.get('error_description') || params?.get('error');
       if (oauthError) {
         router.replace(`/admin/login?auth_error=${encodeURIComponent(oauthError)}`);
@@ -39,30 +31,12 @@ export function AuthCallbackClient() {
       // PKCE flow: ?code=XXX
       const code = params?.get('code');
       if (code) {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        console.log('[AuthCallback] exchange', {
-          ok: !error,
-          error: error?.message,
-          hasSession: !!data?.session,
-          hasUser: !!data?.user,
-          userEmail: data?.user?.email,
-        });
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (cancelled) return;
         if (error) {
           router.replace(`/admin/login?auth_error=${encodeURIComponent(error.message)}`);
           return;
         }
-
-        // Verify the session is actually set in browser cookies before we
-        // hand off to the next page. If this returns null, the cookie
-        // didn't stick.
-        const verify = await supabase.auth.getUser();
-        console.log('[AuthCallback] post-exchange getUser', {
-          hasUser: !!verify.data.user,
-          userEmail: verify.data.user?.email,
-        });
-        if (cancelled) return;
-
         router.replace(next);
         return;
       }
