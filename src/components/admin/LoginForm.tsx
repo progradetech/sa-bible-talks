@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { GoogleButton } from './GoogleButton';
 
@@ -9,6 +9,7 @@ type Step = 'init' | 'credentials' | 'enroll' | 'verify' | 'redirecting';
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = useRef(createClient()).current;
 
   const [step, setStep] = useState<Step>('init');
@@ -43,6 +44,15 @@ export function LoginForm() {
   const lockoutMinutesLeft = isLocked
     ? Math.max(1, Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000))
     : 0;
+
+  // Surface auth_error from /auth/callback redirects (e.g. when Google sign-in
+  // succeeded at Google but exchangeCodeForSession failed locally).
+  useEffect(() => {
+    const authError = searchParams?.get('auth_error');
+    if (authError) {
+      setError(decodeURIComponent(authError));
+    }
+  }, [searchParams]);
 
   // On mount, check if there's already a session at any stage and skip steps.
   useEffect(() => {
