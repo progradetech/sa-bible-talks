@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { LoginForm } from '@/components/admin/LoginForm';
 
 export const metadata: Metadata = {
@@ -14,7 +15,18 @@ export default function AdminLoginPage() {
         <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-5">
           San Antonio Bible Talks
         </p>
-        <LoginForm />
+        {/* Suspense required because LoginForm uses useSearchParams() to
+            read auth_error from the URL after a failed OAuth callback.
+            Without it, Next.js fails build-time prerender of this page. */}
+        <Suspense
+          fallback={
+            <div className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
+              Loading…
+            </div>
+          }
+        >
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   );
