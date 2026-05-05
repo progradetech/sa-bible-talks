@@ -11,10 +11,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Install pg_dump (Postgres 16 client)
+      - name: Install pg_dump (Postgres 17 client from PGDG)
+        # Ubuntu 24.04's default repos cap at postgresql-client-16, but
+        # Supabase serves Postgres 17 and pg_dump refuses to dump a server
+        # newer than itself. Pull from the official PostgreSQL APT repo.
         run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
           sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql-client-16
+          sudo apt-get install -y -qq postgresql-client-17
 
       - name: Dump database
         env:
