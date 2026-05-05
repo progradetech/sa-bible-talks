@@ -28,10 +28,16 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
+          # PGDG installs binaries to /usr/lib/postgresql/<version>/bin/.
+          # On stock Ubuntu 24.04 runners /usr/bin/pg_dump may not exist or
+          # may resolve to a different version via pg_wrapper. Calling the
+          # absolute path is unambiguous and version-pinned.
+          PG_DUMP=/usr/lib/postgresql/17/bin/pg_dump
+          $PG_DUMP --version
           DATE=$(date -u +%Y-%m-%d)
           # --no-owner / --no-acl: dump won't try to set ownership on restore,
           # which avoids permission errors when restoring to a different DB.
-          pg_dump --no-owner --no-acl --format=custom "$DATABASE_URL" > backup-$DATE.dump
+          $PG_DUMP --no-owner --no-acl --format=custom "$DATABASE_URL" > backup-$DATE.dump
           gzip -9 backup-$DATE.dump
           ls -lh backup-$DATE.dump.gz
           echo "BACKUP_FILE=backup-$DATE.dump.gz" >> $GITHUB_ENV
