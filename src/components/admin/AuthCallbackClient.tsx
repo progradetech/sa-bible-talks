@@ -1,90 +1,85 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-// Runs entirely client-side because the implicit-flow tokens land in the URL
-// fragment (#access_token=...&refresh_token=...) which the server never
-// receives. We also handle ?code=XXX (PKCE) on the off chance Supabase ever
-// switches to it for invites.
+// `@supabase/ssr`'s createBrowserClient has `detectSessionInUrl` hardcoded on
+// in browsers, so the SDK auto-exchanges the PKCE `?code=...` (and the
+// implicit `#access_token=...` hash) during _initialize. Our job here is just
+// to wait for the resulting session to settle and then forward to `next`.
+//
+// Note: do NOT call exchangeCodeForSession manually — the verifier is
+// consumed by the auto-exchange and a second call will fail with
+// "PKCE code verifier not found in storage".
 export function AuthCallbackClient() {
   const router = useRouter();
   const params = useSearchParams();
-  const supabase = useRef(createClient()).current;
 
   useEffect(() => {
-    let cancelled = false;
+    const next = params?.get('next') || '/admin/setup-password';
 
-    async function run() {
-      const next = params?.get('next') || '/admin/setup-password';
-
-      // Surface OAuth provider errors that arrive as ?error=... (Google
-      // rejected, code-exchange failed, user denied consent, etc.) before
-      // we try our own exchange.
-      const oauthError = params?.get('error_description') || params?.get('error');
-      if (oauthError) {
-        router.replace(`/admin/login?auth_error=${encodeURIComponent(oauthError)}`);
-        return;
-      }
-
-      // PKCE flow: ?code=XXX
-      const code = params?.get('code');
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (cancelled) return;
-        if (error) {
-          router.replace(`/admin/login?auth_error=${encodeURIComponent(error.message)}`);
-          return;
-        }
-        router.replace(next);
-        return;
-      }
-
-      // Implicit / legacy: #access_token=...&refresh_token=...
-      const hash = window.location.hash.startsWith('#')
-        ? window.location.hash.slice(1)
-        : '';
-      if (hash) {
-        const hashParams = new URLSearchParams(hash);
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        const errorDesc = hashParams.get('error_description');
-
-        if (errorDesc) {
-          router.replace(`/admin/login?auth_error=${encodeURIComponent(errorDesc)}`);
-          return;
-        }
-
-        if (accessToken && refreshToken) {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (cancelled) return;
-          if (error) {
-            router.replace(`/admin/login?auth_error=${encodeURIComponent(error.message)}`);
-            return;
-          }
-          router.replace(next);
-          return;
-        }
-      }
-
-      // No code, no token — link probably expired or was tampered with.
-      router.replace('/admin/login?auth_error=missing_token');
+    // Surface OAuth provider errors (`?error=...`) — these arrive when Google
+    // itself rejects the user (denied consent, account disabled, etc.) and
+    // are not something the SDK exchange can fix.
+    const oauthError = params?.get('error_description') || params?.get('error');
+    if (oauthError) {
+      router.replace(`/admin/login?auth_error=${encodeURIComponent(oauthError)}`);
+      return;
     }
 
-    run();
+    const code = params?.get('code');
+    const hashHasToken =
+      typeof window !== 'undefined' &&
+      window.location.hash.includes('access_token=');
+    if (!code && !hashHasToken) {
+      router.replace('/admin/login?auth_error=missing_token');
+      return;
+    }
+
+    const supabase = createClient();
+    let resolved = false;
+
+    function succeed() {
+      if (resolved) return;
+      resolved = true;
+      router.replace(next);
+    }
+
+    function fail(reason: string) {
+      if (resolved) return;
+      resolved = true;
+      router.replace(`/admin/login?auth_error=${encodeURIComponent(reason)}`);
+    }
+
+    // The auto-exchange happens inside _initialize and emits SIGNED_IN via
+    // setTimeout(..., 0), so we may subscribe slightly before or after the
+    // event fires. Cover both:
+    //   1. Subscribe — catches the event if it fires after we mount.
+    //   2. Poll getSession() — catches it if it fired before our subscription.
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) succeed();
+    });
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) succeed();
+    });
+
+    // Safety net. If after 5s neither the event fired nor a session exists,
+    // something is genuinely broken — show a generic error rather than a
+    // permanent "Processing…" spinner.
+    const timeout = setTimeout(() => fail('callback_timeout'), 5000);
+
     return () => {
-      cancelled = true;
+      subscription.subscription.unsubscribe();
+      clearTimeout(timeout);
     };
-  }, [params, router, supabase]);
+  }, [params, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
       <div className="text-sm text-zinc-500 dark:text-zinc-400">
-        Processing your invite…
+        Processing your sign-in…
       </div>
     </div>
   );
