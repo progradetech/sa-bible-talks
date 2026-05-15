@@ -1,10 +1,15 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import {
+  findActiveTrust,
+  findAdminByUserId,
+  touchTrust,
+} from '@/lib/repos/trusted-devices';
+import { TRUSTED_DEVICE_COOKIE } from '@/lib/trusted-device';
 
-// Refresh the Supabase session and gate /admin/* routes by AAL2 (full MFA).
-// Per architecture: every admin must enroll TOTP and verify it on each
-// session — so requireing currentLevel === 'aal2' covers both unenrolled
-// users (sent to /admin/login to enroll) and AAL1 sessions (sent to verify).
+// Refresh the Supabase session and gate /admin/* routes by AAL2 (full MFA) or
+// by a valid trusted-device cookie tied to the signed-in admin. Without a
+// trust cookie, admins must complete TOTP on every fresh session.
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -53,11 +58,33 @@ export async function updateSession(request: NextRequest) {
     }
 
     const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (aalData?.currentLevel !== 'aal2') {
-      const url = request.nextUrl.clone();
-      url.pathname = '/admin/login';
-      return NextResponse.redirect(url);
+    if (aalData?.currentLevel === 'aal2') {
+      return response;
     }
+
+    // AAL1: allow access only if the trusted-device cookie is valid and the
+    // admin tied to it is still active and not locked out.
+    const trustToken = request.cookies.get(TRUSTED_DEVICE_COOKIE)?.value;
+    if (trustToken) {
+      const trust = await findActiveTrust(trustToken);
+      if (trust) {
+        const admin = await findAdminByUserId(user.id);
+        if (
+          admin &&
+          admin.id === trust.adminUserId &&
+          admin.isActive &&
+          (!admin.lockedUntil || admin.lockedUntil <= new Date())
+        ) {
+          // Best-effort. Failure to update last-seen must not block the request.
+          touchTrust(trust.id).catch(() => {});
+          return response;
+        }
+      }
+    }
+
+    const url = request.nextUrl.clone();
+    url.pathname = '/admin/login';
+    return NextResponse.redirect(url);
   }
 
   return response;

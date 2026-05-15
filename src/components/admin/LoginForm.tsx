@@ -25,6 +25,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [lockedUntil, setLockedUntil] = useState<Date | null>(null);
   const [now, setNow] = useState(() => new Date());
+  const [trustDevice, setTrustDevice] = useState(false);
 
   // Tick `now` every 30s while locked so the countdown text updates and the
   // banner / button auto-clears the moment the lockout expires.
@@ -102,6 +103,23 @@ export function LoginForm() {
       if (cancelled) return;
       const verifiedTotp = factorsData?.totp?.find((f) => f.status === 'verified');
       if (verifiedTotp) {
+        // Trusted-device shortcut: if this browser still has a valid trust
+        // cookie for the signed-in admin, skip the TOTP prompt entirely.
+        // The proxy middleware will let them into /admin without AAL2.
+        try {
+          const trustRes = await fetch('/api/auth/check-trusted-device', {
+            method: 'POST',
+          });
+          const trustData = (await trustRes.json()) as { trusted: boolean };
+          if (cancelled) return;
+          if (trustData.trusted) {
+            setStep('redirecting');
+            router.push('/admin');
+            return;
+          }
+        } catch {
+          /* fall through to TOTP prompt */
+        }
         setFactorId(verifiedTotp.id);
         setStep('verify');
       } else {
@@ -262,6 +280,16 @@ export function LoginForm() {
       await fetch('/api/auth/record-login', { method: 'POST' });
     } catch {
       /* swallow — proceed to /admin regardless */
+    }
+
+    // Grant device trust if the user opted in. Best-effort — failure here
+    // just means they'll be prompted for TOTP again on the next session.
+    if (trustDevice) {
+      try {
+        await fetch('/api/auth/grant-trust', { method: 'POST' });
+      } catch {
+        /* swallow */
+      }
     }
 
     setStep('redirecting');
@@ -444,6 +472,18 @@ export function LoginForm() {
           className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
+      <label className="flex items-start gap-2 text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={trustDevice}
+          onChange={(e) => setTrustDevice(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span>
+          Trust this device for 90 days. Skip the 6-digit code on this browser
+          until then. Don&apos;t check this on a shared computer.
+        </span>
+      </label>
       {error && <div className="text-sm text-red-600 dark:text-red-400">{error}</div>}
       <button
         type="submit"

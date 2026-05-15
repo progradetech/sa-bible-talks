@@ -99,6 +99,23 @@ export const adminUsers = pgTable('admin_users', {
   invitedBy: uuid('invited_by'),
 });
 
+export const trustedDevices = pgTable(
+  'trusted_devices',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    adminUserId: uuid('admin_user_id')
+      .notNull()
+      .references(() => adminUsers.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull().unique(),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (t) => [index('idx_trusted_devices_admin').on(t.adminUserId, t.expiresAt)],
+);
+
 export const visitorRequests = pgTable(
   'visitor_requests',
   {
@@ -175,6 +192,8 @@ export const auditAction = {
   ADMIN_DEACTIVATE: 'admin_deactivate',
   ADMIN_ROLE_CHANGE: 'admin_role_change',
   TOGGLE_PUBLIC_INDEXABLE: 'toggle_public_indexable',
+  DEVICE_TRUST_GRANTED: 'device_trust_granted',
+  DEVICE_TRUST_REVOKED: 'device_trust_revoked',
 } as const;
 
 export type AuditAction = (typeof auditAction)[keyof typeof auditAction];
