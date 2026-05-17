@@ -15,9 +15,14 @@ export interface AdminRow {
   lockedUntil: string | null;
   createdAt: string;
   invitedBy: string | null;
+  hasGoogle: boolean;
+  hasPassword: boolean;
 }
 
-function toRow(r: typeof adminUsers.$inferSelect): AdminRow {
+function toRow(
+  r: typeof adminUsers.$inferSelect,
+  providers?: { hasGoogle: boolean; hasPassword: boolean },
+): AdminRow {
   return {
     id: r.id,
     userId: r.userId,
@@ -29,12 +34,40 @@ function toRow(r: typeof adminUsers.$inferSelect): AdminRow {
     lockedUntil: r.lockedUntil?.toISOString() ?? null,
     createdAt: r.createdAt.toISOString(),
     invitedBy: r.invitedBy,
+    hasGoogle: providers?.hasGoogle ?? false,
+    hasPassword: providers?.hasPassword ?? false,
   };
 }
 
 export async function listAdmins(): Promise<AdminRow[]> {
   const rows = await db.select().from(adminUsers).orderBy(adminUsers.createdAt);
-  return rows.map(toRow);
+
+  const supabase = serviceRoleClient();
+  const {
+    data: { users },
+    error,
+  } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (error) throw new Error(`Failed to list auth users: ${error.message}`);
+
+  const providersByUserId = new Map<string, { hasGoogle: boolean; hasPassword: boolean }>();
+  for (const u of users) {
+    // Supabase exposes provider info in two places, and which one is populated
+    // depends on the SDK version and how the user was created. We OR them
+    // together so a presence in either source counts.
+    const identityProviders = u.identities?.map((i) => i.provider) ?? [];
+    const metaProviders =
+      (u.app_metadata as { providers?: unknown } | null)?.providers;
+    const metaProvidersArr = Array.isArray(metaProviders)
+      ? metaProviders.filter((p): p is string => typeof p === 'string')
+      : [];
+    const all = new Set<string>([...identityProviders, ...metaProvidersArr]);
+    providersByUserId.set(u.id, {
+      hasGoogle: all.has('google'),
+      hasPassword: all.has('email'),
+    });
+  }
+
+  return rows.map((r) => toRow(r, providersByUserId.get(r.userId)));
 }
 
 function serviceRoleClient() {
@@ -147,4 +180,47 @@ export async function updateAdmin(
       metadata: { role: input.role },
     });
   }
+}
+
+export class AdminNotFoundError extends Error {
+  constructor(public readonly id: string) {
+    super(`admin not found: ${id}`);
+  }
+}
+
+export async function setAdminPassword(
+  id: string,
+  password: string,
+  ctx: AdminContext,
+): Promise<void> {
+  const [admin] = await db
+    .select()
+    .from(adminUsers)
+    .where(eq(adminUsers.id, id))
+    .limit(1);
+  if (!admin) throw new AdminNotFoundError(id);
+
+  const supabase = serviceRoleClient();
+
+  // Look up current identities so we can record whether this was a reset of an
+  // existing password or the first time one was set on the account.
+  const { data: userData, error: getErr } = await supabase.auth.admin.getUserById(
+    admin.userId,
+  );
+  if (getErr) throw new Error(`Failed to read auth user: ${getErr.message}`);
+  const hadPasswordBefore =
+    userData.user?.identities?.some((i) => i.provider === 'email') ?? false;
+
+  const { error: updateErr } = await supabase.auth.admin.updateUserById(admin.userId, {
+    password,
+    email_confirm: true,
+  });
+  if (updateErr) throw new Error(`Update failed: ${updateErr.message}`);
+
+  await record({
+    action: 'admin_password_set',
+    ctx,
+    targetId: id,
+    metadata: { email: admin.email, addedPasswordIdentity: !hadPasswordBefore },
+  });
 }

@@ -22,8 +22,8 @@ export default async function AdminsPage() {
   return (
     <div className="fixed inset-0 flex flex-col bg-zinc-100 dark:bg-zinc-950">
       <AdminHeader email={ctx.email} role={ctx.role} currentPath="/admin/admins" />
-      <main className="flex-1 min-h-0 overflow-y-auto p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <main className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
+        <div className="mx-auto w-full max-w-4xl lg:max-w-6xl 2xl:max-w-screen-2xl space-y-6">
           <div>
             <h1 className="text-2xl font-semibold mb-1 text-zinc-950 dark:text-zinc-50">
               Admins

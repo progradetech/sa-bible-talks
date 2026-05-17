@@ -191,6 +191,7 @@ export const auditAction = {
   ADMIN_INVITE: 'admin_invite',
   ADMIN_DEACTIVATE: 'admin_deactivate',
   ADMIN_ROLE_CHANGE: 'admin_role_change',
+  ADMIN_PASSWORD_SET: 'admin_password_set',
   TOGGLE_PUBLIC_INDEXABLE: 'toggle_public_indexable',
   DEVICE_TRUST_GRANTED: 'device_trust_granted',
   DEVICE_TRUST_REVOKED: 'device_trust_revoked',
