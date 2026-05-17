@@ -167,7 +167,7 @@ export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted }: Props) 
   }
 
   return (
-    <aside className="absolute right-3 top-3 bottom-3 z-20 w-[420px] bg-white dark:bg-zinc-900 rounded-lg shadow-2xl flex flex-col text-zinc-950 dark:text-zinc-50 overflow-hidden">
+    <aside className="absolute inset-0 z-50 md:right-3 md:top-3 md:bottom-3 md:left-auto md:inset-auto md:w-[420px] bg-white dark:bg-zinc-900 md:rounded-lg shadow-2xl flex flex-col text-zinc-950 dark:text-zinc-50 overflow-hidden">
       <header className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-lg font-semibold">
@@ -190,7 +190,7 @@ export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted }: Props) 
       <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
         <Section label="Identity">
           <Input label="Name" value={name} onChange={setName} required />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <Select<Ministry>
               label="Ministry"
               value={ministry}
@@ -227,25 +227,25 @@ export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted }: Props) 
             <label className="block text-xs font-medium mb-1">
               Address <span className="text-red-500">*</span>
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <input
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 required
-                className="flex-1 px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 min-w-[12rem] px-3 py-2 md:py-1.5 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 type="button"
                 onClick={handleGeocode}
                 disabled={geocoding || !address.trim()}
-                className="px-3 py-1.5 text-xs font-medium rounded-md border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 whitespace-nowrap"
+                className="px-3 py-2 md:py-1.5 text-xs font-medium rounded-md border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 whitespace-nowrap"
               >
                 {geocoding ? 'Looking up…' : 'Lookup'}
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <Input
               label="Exact lat"
               type="number"
@@ -329,14 +329,14 @@ export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted }: Props) 
                 type="button"
                 onClick={handleDelete}
                 disabled={submitting}
-                className="px-3 py-1.5 text-xs font-semibold bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                className="px-3 py-2 md:py-1.5 text-xs font-semibold bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
               >
                 Confirm delete
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(false)}
-                className="px-3 py-1.5 text-xs text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-100"
+                className="px-3 py-2 md:py-1.5 text-xs text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-100"
               >
                 Cancel
               </button>
@@ -345,7 +345,7 @@ export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted }: Props) 
             <button
               type="button"
               onClick={() => setConfirmingDelete(true)}
-              className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md"
+              className="px-3 py-2 md:py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md"
             >
               Delete leader
             </button>
@@ -358,7 +358,7 @@ export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted }: Props) 
           <button
             type="button"
             onClick={onCancel}
-            className="px-3 py-1.5 text-sm font-medium rounded-md border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            className="px-3 py-2 md:py-1.5 text-sm font-medium rounded-md border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Cancel
           </button>
@@ -366,7 +366,7 @@ export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted }: Props) 
             type="submit"
             onClick={handleSubmit}
             disabled={submitting}
-            className="px-4 py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 md:py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Saving…' : isCreating ? 'Create' : 'Save'}
           </button>
@@ -420,7 +420,7 @@ function Input({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        className="w-full px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-3 py-2 md:py-1.5 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
     </div>
   );
@@ -443,7 +443,7 @@ function Select<T extends string>({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
-        className="w-full px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-3 py-2 md:py-1.5 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         {options.map((o) => (
           <option key={o} value={o}>

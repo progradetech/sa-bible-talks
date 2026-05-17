@@ -224,7 +224,8 @@ export function PublicMap({ locations }: { locations: PublicLeader[] }) {
       map.on('click', 'ministry-fill', (e) => {
         const feature = e.features?.[0];
         if (!feature) return;
-        new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '280px' })
+        const popupMaxWidth = window.innerWidth < 480 ? '85vw' : '280px';
+        new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: popupMaxWidth })
           .setLngLat(e.lngLat)
           .setHTML(buildPopupHTML(feature.properties))
           .addTo(map);

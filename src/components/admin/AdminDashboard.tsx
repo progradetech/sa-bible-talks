@@ -19,6 +19,7 @@ interface Props {
 export function AdminDashboard({ leaders, adminEmail, adminRole }: Props) {
   const [selectedLeaderId, setSelectedLeaderId] = useState<string | null>(null);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const selectedLeader =
     selectedLeaderId !== null
@@ -82,11 +83,30 @@ export function AdminDashboard({ leaders, adminEmail, adminRole }: Props) {
           selectedLeaderId={selectedLeaderId}
           onSelect={handleSelectLeader}
         />
+        {/* Mobile-only "Leaders" toggle — opens the sidebar drawer */}
+        {!sidebarOpen && (
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden absolute top-2 left-2 z-20 flex items-center gap-1.5 bg-white/95 dark:bg-zinc-900/95 backdrop-blur rounded-full shadow-lg px-3 py-2 text-sm font-medium text-zinc-950 dark:text-zinc-50"
+            aria-label="Show leaders"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+            Leaders
+          </button>
+        )}
+
         <LeaderSidebar
           leaders={leaders}
           selectedLeaderId={selectedLeaderId}
           onSelect={handleSelectLeader}
           onCreate={handleCreate}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
         />
 
         {drawerMode === 'view' && selectedLeader && (

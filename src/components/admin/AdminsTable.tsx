@@ -81,6 +81,17 @@ function ActionsMenu({ children }: { children: React.ReactNode }) {
   );
 }
 
+function CardRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[6rem_1fr] gap-2 py-1 text-sm">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 self-center">
+        {label}
+      </span>
+      <span className="text-zinc-700 dark:text-zinc-200 min-w-0">{children}</span>
+    </div>
+  );
+}
+
 function MenuItem({
   onClick,
   disabled,
@@ -168,7 +179,110 @@ export function AdminsTable({ admins, currentAdminUserId }: Props) {
         </div>
       )}
 
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm">
+      {/* Mobile: card list */}
+      <div className="md:hidden space-y-3">
+        {admins.map((a) => {
+          const isSelf = a.id === currentAdminUserId;
+          const isPending = pendingId === a.id;
+          const canSetPassword = !isSelf && (a.hasPassword || a.hasGoogle);
+          const setPwLabel = a.hasPassword ? 'Set password' : 'Add password';
+          const locked = a.lockedUntil && new Date(a.lockedUntil) > new Date();
+          return (
+            <div
+              key={a.id}
+              className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm p-4 relative"
+            >
+              <CardRow label="Email">
+                <span className="break-all">{a.email}</span>
+                {isSelf && (
+                  <span className="ml-2 text-[10px] uppercase tracking-wide text-zinc-400">
+                    you
+                  </span>
+                )}
+              </CardRow>
+              <CardRow label="Role">
+                <span
+                  className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded inline-block ${
+                    a.role === 'super_admin'
+                      ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
+                      : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
+                  }`}
+                >
+                  {a.role}
+                </span>
+              </CardRow>
+              <CardRow label="Status">
+                {a.isActive ? (
+                  <span className="text-xs text-green-600 dark:text-green-400">
+                    active
+                  </span>
+                ) : (
+                  <span className="text-xs text-zinc-500">inactive</span>
+                )}
+                {locked && (
+                  <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">
+                    locked
+                  </span>
+                )}
+              </CardRow>
+              <CardRow label="Sign-in">
+                <span
+                  className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded inline-block ${
+                    !a.lastLoginAt
+                      ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
+                  }`}
+                >
+                  {providerLabel(a)}
+                </span>
+              </CardRow>
+              <CardRow label="Last">
+                <span className="text-zinc-500 text-xs">
+                  {a.lastLoginAt
+                    ? dateTimeFormatter.format(new Date(a.lastLoginAt))
+                    : 'never'}
+                </span>
+              </CardRow>
+              {!isSelf && (
+                <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
+                  <ActionsMenu>
+                    {canSetPassword && (
+                      <MenuItem
+                        disabled={isPending}
+                        onClick={() => setSetPasswordTarget(a)}
+                      >
+                        {setPwLabel}
+                      </MenuItem>
+                    )}
+                    <MenuItem
+                      disabled={isPending}
+                      onClick={() =>
+                        update(a.id, {
+                          role: a.role === 'super_admin' ? 'admin' : 'super_admin',
+                        })
+                      }
+                    >
+                      {a.role === 'super_admin'
+                        ? 'Demote → admin'
+                        : 'Promote → super_admin'}
+                    </MenuItem>
+                    <MenuItem
+                      disabled={isPending}
+                      danger
+                      onClick={() => update(a.id, { isActive: !a.isActive })}
+                    >
+                      {a.isActive ? 'Deactivate' : 'Reactivate'}
+                    </MenuItem>
+                  </ActionsMenu>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-xl shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             <tr>

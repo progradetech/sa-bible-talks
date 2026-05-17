@@ -13,7 +13,7 @@ export function LeaderDrawer({ leader, onClose, onEdit }: Props) {
   if (!leader) return null;
 
   return (
-    <aside className="absolute right-3 top-3 bottom-3 z-20 w-96 bg-white dark:bg-zinc-900 rounded-lg shadow-2xl flex flex-col text-zinc-950 dark:text-zinc-50 overflow-hidden">
+    <aside className="absolute inset-0 z-40 md:right-3 md:top-3 md:bottom-3 md:left-auto md:inset-auto md:w-96 bg-white dark:bg-zinc-900 md:rounded-lg shadow-2xl flex flex-col text-zinc-950 dark:text-zinc-50 overflow-hidden">
       <header className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-lg font-semibold truncate">{leader.name}</h3>
@@ -24,14 +24,14 @@ export function LeaderDrawer({ leader, onClose, onEdit }: Props) {
         <div className="flex items-center gap-1 flex-shrink-0">
           <button
             onClick={onEdit}
-            className="px-2.5 py-1 text-xs font-medium border border-zinc-300 dark:border-zinc-700 rounded hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            className="px-3 py-2 md:px-2.5 md:py-1 text-xs font-medium border border-zinc-300 dark:border-zinc-700 rounded hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Edit
           </button>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 -m-1 leading-none"
+            className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-2 md:p-1 -m-1 leading-none text-lg md:text-base"
           >
             ✕
           </button>
@@ -74,7 +74,7 @@ export function LeaderDrawer({ leader, onClose, onEdit }: Props) {
           }
         />
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Field label="Language" value={leader.language} />
           <Field label="Kid-friendly" value={leader.kidFriendly ? 'Yes' : 'No'} />
         </div>
@@ -106,7 +106,7 @@ export function LeaderDrawer({ leader, onClose, onEdit }: Props) {
           value={leader.adminNotes || <Empty>none</Empty>}
         />
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Field
             label="Exact location"
             value={

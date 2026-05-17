@@ -191,7 +191,7 @@ export function VisitorRequestModal({ leaderId, onClose }: Props) {
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 ${
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 md:p-4 ${
         leaderId ? '' : 'hidden'
       }`}
       aria-hidden={!leaderId}
@@ -199,7 +199,7 @@ export function VisitorRequestModal({ leaderId, onClose }: Props) {
         if (leaderId && e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-md p-6 text-zinc-950 dark:text-zinc-50">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-5 md:p-6 text-zinc-950 dark:text-zinc-50">
         {/* Success state */}
         <div className={submitted ? '' : 'hidden'}>
           <h2 className="text-lg font-semibold mb-2">Message forwarded</h2>
@@ -209,7 +209,7 @@ export function VisitorRequestModal({ leaderId, onClose }: Props) {
           </p>
           <button
             onClick={onClose}
-            className="bg-zinc-900 dark:bg-zinc-50 text-white dark:text-zinc-900 px-4 py-2 rounded-md text-sm font-medium hover:opacity-90"
+            className="bg-zinc-900 dark:bg-zinc-50 text-white dark:text-zinc-900 px-4 py-3 md:py-2 rounded-md text-sm font-medium hover:opacity-90"
           >
             Close
           </button>
@@ -243,7 +243,7 @@ export function VisitorRequestModal({ leaderId, onClose }: Props) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-3 md:py-2 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -255,7 +255,7 @@ export function VisitorRequestModal({ leaderId, onClose }: Props) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-3 md:py-2 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -266,7 +266,7 @@ export function VisitorRequestModal({ leaderId, onClose }: Props) {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-3 md:py-2 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -282,7 +282,10 @@ export function VisitorRequestModal({ leaderId, onClose }: Props) {
               />
             </div>
 
-            <div ref={turnstileContainerRef} className="flex justify-center pt-1" />
+            <div
+              ref={turnstileContainerRef}
+              className="flex justify-center pt-1 overflow-x-auto -mx-1 px-1"
+            />
           </div>
 
           {error && (
@@ -293,14 +296,14 @@ export function VisitorRequestModal({ leaderId, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium rounded-md border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              className="px-4 py-3 md:py-2 text-sm font-medium rounded-md border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!canSubmit}
-              className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-3 md:py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? 'Sending…' : 'Send'}
             </button>

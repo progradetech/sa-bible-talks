@@ -12,6 +12,17 @@ interface Props {
   canFilterByActor: boolean; // super_admin sees all, plain admin scoped to self
 }
 
+function CardRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[5rem_1fr] gap-2 py-1 text-sm">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 self-center">
+        {label}
+      </span>
+      <span className="text-zinc-700 dark:text-zinc-200 min-w-0">{children}</span>
+    </div>
+  );
+}
+
 export function AuditTable({
   entries,
   total,
@@ -44,15 +55,15 @@ export function AuditTable({
 
   return (
     <div className="space-y-4">
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm p-4 flex flex-wrap items-end gap-3">
-        <div>
+      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm p-4 flex flex-col md:flex-row md:flex-wrap md:items-end gap-3">
+        <div className="w-full md:w-auto">
           <label className="block text-[10px] uppercase tracking-wider text-zinc-500 mb-1">
             Action
           </label>
           <select
             value={currentAction}
             onChange={(e) => setParam('action', e.target.value || null)}
-            className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full md:w-auto px-3 py-2 md:py-1.5 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All actions</option>
             {actions.map((a) => (
@@ -64,7 +75,7 @@ export function AuditTable({
         </div>
 
         {canFilterByActor && (
-          <div>
+          <div className="w-full md:w-auto">
             <label className="block text-[10px] uppercase tracking-wider text-zinc-500 mb-1">
               Actor email
             </label>
@@ -79,18 +90,53 @@ export function AuditTable({
                   setParam('actor', e.currentTarget.value || null);
                 }
               }}
-              className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full md:w-auto px-3 py-2 md:py-1.5 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         )}
 
-        <div className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto">
+        <div className="text-xs text-zinc-500 dark:text-zinc-400 md:ml-auto">
           {total} {total === 1 ? 'entry' : 'entries'}
           {currentAction || currentActor ? ' (filtered)' : ''}
         </div>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm overflow-hidden">
+      {/* Mobile: card list */}
+      <div className="md:hidden space-y-3">
+        {entries.length === 0 ? (
+          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm px-3 py-8 text-center text-sm text-zinc-500 italic">
+            No audit entries match these filters.
+          </div>
+        ) : (
+          entries.map((e) => (
+            <div
+              key={e.id}
+              className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm p-4"
+            >
+              <CardRow label="When">
+                <span className="text-xs">{new Date(e.createdAt).toLocaleString()}</span>
+              </CardRow>
+              <CardRow label="Actor">
+                {e.actorEmail ?? <em className="text-zinc-400">system</em>}
+              </CardRow>
+              <CardRow label="Action">
+                <span className="font-mono text-xs break-all">{e.action}</span>
+              </CardRow>
+              <CardRow label="Target">
+                <span className="font-mono text-[10px] text-zinc-500">
+                  {e.targetId ? e.targetId.slice(0, 8) + '…' : '—'}
+                </span>
+              </CardRow>
+              <CardRow label="IP">
+                <span className="font-mono text-xs text-zinc-500">{e.ip ?? '—'}</span>
+              </CardRow>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-xl shadow-sm overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             <tr>
@@ -144,7 +190,7 @@ export function AuditTable({
             type="button"
             onClick={() => setPage(page - 1)}
             disabled={page <= 1}
-            className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 md:py-1.5 border border-zinc-300 dark:border-zinc-700 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             ← Prev
           </button>
@@ -155,7 +201,7 @@ export function AuditTable({
             type="button"
             onClick={() => setPage(page + 1)}
             disabled={page >= totalPages}
-            className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 md:py-1.5 border border-zinc-300 dark:border-zinc-700 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next →
           </button>

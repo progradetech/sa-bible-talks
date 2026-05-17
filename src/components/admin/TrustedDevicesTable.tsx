@@ -16,6 +16,17 @@ interface Props {
   devices: TrustedDeviceView[];
 }
 
+function CardRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[5.5rem_1fr] gap-2 py-1 text-sm">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 self-center">
+        {label}
+      </span>
+      <span className="text-zinc-700 dark:text-zinc-200 min-w-0">{children}</span>
+    </div>
+  );
+}
+
 export function TrustedDevicesTable({ devices }: Props) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +67,57 @@ export function TrustedDevicesTable({ devices }: Props) {
           {error}
         </div>
       )}
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm overflow-hidden">
+      {/* Mobile: card list */}
+      <div className="md:hidden space-y-3">
+        {devices.map((d) => {
+          const isPending = pendingId === d.id;
+          return (
+            <div
+              key={d.id}
+              className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm p-4"
+            >
+              <CardRow label="Browser">
+                <span className="break-words" title={d.userAgent ?? ''}>
+                  {d.userAgent || <span className="text-zinc-400">unknown</span>}
+                </span>
+                {d.isCurrent && (
+                  <span className="mt-1 inline-block text-[10px] uppercase tracking-wide bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
+                    this browser
+                  </span>
+                )}
+              </CardRow>
+              <CardRow label="Trusted">
+                <span className="text-xs text-zinc-500">
+                  {new Date(d.createdAt).toLocaleString()}
+                </span>
+              </CardRow>
+              <CardRow label="Last seen">
+                <span className="text-xs text-zinc-500">
+                  {new Date(d.lastSeenAt).toLocaleString()}
+                </span>
+              </CardRow>
+              <CardRow label="Expires">
+                <span className="text-xs text-zinc-500">
+                  {new Date(d.expiresAt).toLocaleDateString()}
+                </span>
+              </CardRow>
+              <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => revoke(d.id)}
+                  className="text-xs px-3 py-2 border border-red-300 dark:border-red-900 text-red-600 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
+                >
+                  {isPending ? 'Revoking…' : 'Revoke'}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-xl shadow-sm overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             <tr>
