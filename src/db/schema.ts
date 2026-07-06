@@ -195,6 +195,7 @@ export const auditAction = {
   TOGGLE_PUBLIC_INDEXABLE: 'toggle_public_indexable',
   DEVICE_TRUST_GRANTED: 'device_trust_granted',
   DEVICE_TRUST_REVOKED: 'device_trust_revoked',
+  EXPORT_LEADERS: 'export_leaders',
 } as const;
 
 export type AuditAction = (typeof auditAction)[keyof typeof auditAction];

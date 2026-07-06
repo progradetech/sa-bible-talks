@@ -12,6 +12,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { href: '/admin', label: 'Map' },
+  { href: '/admin/leaders', label: 'Leaders' },
   { href: '/admin/audit', label: 'Audit' },
   { href: '/admin/devices', label: 'Devices' },
   { href: '/admin/settings', label: 'Settings', superAdminOnly: true },
