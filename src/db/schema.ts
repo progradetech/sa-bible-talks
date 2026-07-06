@@ -66,7 +66,7 @@ export const bibleTalks = pgTable(
       .on(t.isActive, t.hideFromPublicMap, t.isPaused)
       .where(sql`${t.isActive} = TRUE AND ${t.hideFromPublicMap} = FALSE AND ${t.isPaused} = FALSE`),
   ],
-);
+).enableRLS();
 
 export const bibleTalksPii = pgTable('bible_talks_pii', {
   bibleTalkId: uuid('bible_talk_id')
@@ -81,7 +81,7 @@ export const bibleTalksPii = pgTable('bible_talks_pii', {
   exactLngEnc: bytea('exact_lng_enc').notNull(),
   keyVersion: text('key_version').notNull().default('v1'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 export const adminUsers = pgTable('admin_users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -97,7 +97,7 @@ export const adminUsers = pgTable('admin_users', {
   lockedUntil: timestamp('locked_until', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   invitedBy: uuid('invited_by'),
-});
+}).enableRLS();
 
 export const trustedDevices = pgTable(
   'trusted_devices',
@@ -114,7 +114,7 @@ export const trustedDevices = pgTable(
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
   },
   (t) => [index('idx_trusted_devices_admin').on(t.adminUserId, t.expiresAt)],
-);
+).enableRLS();
 
 export const visitorRequests = pgTable(
   'visitor_requests',
@@ -140,7 +140,7 @@ export const visitorRequests = pgTable(
       .on(t.dispatched, t.createdAt)
       .where(sql`${t.dispatched} = FALSE`),
   ],
-);
+).enableRLS();
 
 export const auditLog = pgTable(
   'audit_log',
@@ -159,7 +159,7 @@ export const auditLog = pgTable(
     index('idx_audit_recent').on(t.createdAt.desc()),
     index('idx_audit_actor').on(t.adminUserId, t.createdAt.desc()),
   ],
-);
+).enableRLS();
 
 export const siteSettings = pgTable(
   'site_settings',
@@ -173,7 +173,7 @@ export const siteSettings = pgTable(
     updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
   },
   (t) => [check('singleton_check', sql`${t.id} = 1`)],
-);
+).enableRLS();
 
 export const messageTemplates = pgTable('message_templates', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -183,7 +183,7 @@ export const messageTemplates = pgTable('message_templates', {
   updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 export const commsLog = pgTable(
   'comms_log',
@@ -204,7 +204,7 @@ export const commsLog = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('idx_comms_log_recent').on(t.createdAt.desc())],
-);
+).enableRLS();
 
 export const auditAction = {
   LOGIN_SUCCESS: 'login_success',
