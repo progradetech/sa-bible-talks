@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import type { Ministry } from '@/lib/types';
 
@@ -142,7 +143,10 @@ export function LeadersTable({ rows }: Props) {
         <span className="text-sm text-zinc-500 dark:text-zinc-400">
           {rows.length} leader{rows.length === 1 ? '' : 's'}
         </span>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/comms" className={exportButtonClasses}>
+            Message leaders
+          </Link>
           <button type="button" onClick={exportCsv} className={exportButtonClasses}>
             Export CSV
           </button>

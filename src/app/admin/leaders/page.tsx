@@ -1,15 +1,11 @@
 import { redirect } from 'next/navigation';
 import { getAdminContext } from '@/lib/auth';
+import { PLACEHOLDER_EMAIL } from '@/lib/constants';
 import { listPrivate } from '@/lib/repos/leaders';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { LeadersTable } from '@/components/admin/LeadersTable';
 
 export const dynamic = 'force-dynamic';
-
-// Records imported without a real contact email carry this placeholder in the
-// database. Treat it as "no email" everywhere the directory renders or
-// exports — the stored value is untouched.
-const PLACEHOLDER_EMAIL = 'luminarytech2020@gmail.com';
 
 export const metadata = {
   title: 'Leaders — SA Bible Talks Admin',

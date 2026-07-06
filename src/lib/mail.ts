@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 interface SendMessage {
   to: string;
   replyTo?: string;
-  bcc?: string;
+  bcc?: string | string[];
   subject: string;
   body: string;
 }
@@ -27,11 +27,11 @@ function getTransporter(): Promise<nodemailer.Transporter> {
   return transporterPromise;
 }
 
-export async function send(msg: SendMessage): Promise<void> {
+export async function send(msg: SendMessage): Promise<nodemailer.SentMessageInfo> {
   const from = `SA Bible Talks <${process.env.GMAIL_SMTP_USER}>`;
   const transporter = await getTransporter();
 
-  await transporter.sendMail({
+  return transporter.sendMail({
     from,
     to: msg.to,
     replyTo: msg.replyTo,

@@ -175,6 +175,37 @@ export const siteSettings = pgTable(
   (t) => [check('singleton_check', sql`${t.id} = 1`)],
 );
 
+export const messageTemplates = pgTable('message_templates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  subject: text('subject').notNull(),
+  body: text('body').notNull(),
+  updatedBy: uuid('updated_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const commsLog = pgTable(
+  'comms_log',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    subject: text('subject').notNull(),
+    body: text('body').notNull(),
+    recipientCount: integer('recipient_count').notNull(),
+    // Leaders skipped because they have no real email (placeholder/empty).
+    skippedCount: integer('skipped_count').notNull().default(0),
+    includedInactive: boolean('included_inactive').notNull().default(false),
+    isTest: boolean('is_test').notNull().default(false),
+    sentBy: uuid('sent_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+    // Snapshot so history stays readable if the admin row is removed.
+    sentByEmail: text('sent_by_email'),
+    status: text('status').notNull(), // 'sent' | 'failed'
+    error: text('error'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('idx_comms_log_recent').on(t.createdAt.desc())],
+);
+
 export const auditAction = {
   LOGIN_SUCCESS: 'login_success',
   LOGIN_FAIL: 'login_fail',
@@ -196,6 +227,7 @@ export const auditAction = {
   DEVICE_TRUST_GRANTED: 'device_trust_granted',
   DEVICE_TRUST_REVOKED: 'device_trust_revoked',
   EXPORT_LEADERS: 'export_leaders',
+  SEND_COMMS: 'send_comms',
 } as const;
 
 export type AuditAction = (typeof auditAction)[keyof typeof auditAction];
