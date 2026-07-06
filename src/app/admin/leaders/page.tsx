@@ -15,6 +15,7 @@ export const metadata = {
 export default async function LeadersPage() {
   const ctx = await getAdminContext();
   if (!ctx) redirect('/admin/login');
+  if (ctx.role === 'leader') redirect('/admin');
 
   const leaders = await listPrivate(ctx);
 

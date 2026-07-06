@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server';
 import { geocode } from '@/lib/geocode';
-import { ForbiddenError, UnauthorizedError, requireAdmin } from '@/lib/auth';
+import { ForbiddenError, UnauthorizedError, requireMember } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAdmin(req);
+    // Members (including leaders) — leaders geocode their own talk's address.
+    await requireMember(req);
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return Response.json({ error: 'unauthorized' }, { status: 401 });

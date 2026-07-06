@@ -1,12 +1,14 @@
 import { and, eq } from 'drizzle-orm';
-import { bibleTalks, bibleTalksPii, db } from '@/db';
+import { adminUsers, bibleTalks, bibleTalksPii, db } from '@/db';
 import { record } from '../audit';
+import { PLACEHOLDER_EMAIL } from '../constants';
 import { decryptField, encryptField, getKeyVersion } from '../crypto';
 import { jitter } from '../jitter';
 import type {
   AdminContext,
   CreateLeaderInput,
   Language,
+  MapLeader,
   Ministry,
   PrivateLeader,
   PublicLeader,
@@ -80,9 +82,166 @@ export async function listPrivate(ctx: AdminContext): Promise<PrivateLeader[]> {
         hideFromPublicMap: talk.hideFromPublicMap,
         isPaused: talk.isPaused,
         isActive: talk.isActive,
+        leaderAdminUserId: talk.leaderAdminUserId,
       };
     }),
   );
+}
+
+function hasRealEmail(email: string): boolean {
+  return !!email && email !== PLACEHOLDER_EMAIL;
+}
+
+// Role-aware payload for the admin map dashboard. Staff get every talk with
+// full PII plus the linked leader's account email. A leader-role viewer gets
+// full PII only for their own talk; every other talk is redacted server-side
+// (blank PII, approx coords in the exact-coord slots) and limited to
+// publicly-visible talks — except the leader's name, which signed-in leaders
+// are allowed to see.
+export async function listForMap(ctx: AdminContext): Promise<MapLeader[]> {
+  if (ctx.role !== 'leader') {
+    const [all, admins] = await Promise.all([
+      listPrivate(ctx),
+      db.select({ id: adminUsers.id, email: adminUsers.email }).from(adminUsers),
+    ]);
+    const emailById = new Map(admins.map((a) => [a.id, a.email]));
+    return all.map((l) => ({
+      ...l,
+      isOwn: false,
+      redacted: false,
+      claimable: false,
+      linkedLeaderEmail: l.leaderAdminUserId
+        ? (emailById.get(l.leaderAdminUserId) ?? null)
+        : null,
+    }));
+  }
+
+  const rows = await db
+    .select()
+    .from(bibleTalks)
+    .leftJoin(bibleTalksPii, eq(bibleTalksPii.bibleTalkId, bibleTalks.id));
+
+  const leaderIsLinked = rows.some(
+    ({ bible_talks: talk }) => talk.leaderAdminUserId === ctx.adminUserId,
+  );
+
+  const result: MapLeader[] = [];
+  for (const { bible_talks: talk, bible_talks_pii: pii } of rows) {
+    if (!pii) throw new Error(`pii row missing for bible_talk ${talk.id}`);
+    const isOwn = talk.leaderAdminUserId === ctx.adminUserId;
+
+    if (isOwn) {
+      const [name, address, email, phone, exactLat, exactLng] = await Promise.all([
+        decryptField(pii.nameEnc, talk.id),
+        decryptField(pii.addressEnc, talk.id),
+        decryptField(pii.emailEnc, talk.id),
+        pii.phoneEnc ? decryptField(pii.phoneEnc, talk.id) : Promise.resolve(null),
+        decryptField(pii.exactLatEnc, talk.id),
+        decryptField(pii.exactLngEnc, talk.id),
+      ]);
+      await record({ action: 'view_pii_single', ctx, targetId: talk.id });
+      result.push({
+        ...toPublic(talk),
+        groupName: talk.groupName,
+        showGroupName: talk.showGroupName,
+        name,
+        address,
+        email,
+        phone,
+        adminNotes: null, // never sent to leaders, even for their own talk
+        exactLat: Number(exactLat),
+        exactLng: Number(exactLng),
+        hideFromPublicMap: talk.hideFromPublicMap,
+        isPaused: talk.isPaused,
+        isActive: talk.isActive,
+        leaderAdminUserId: talk.leaderAdminUserId,
+        isOwn: true,
+        redacted: false,
+        claimable: false,
+        linkedLeaderEmail: null,
+      });
+      continue;
+    }
+
+    // Other talks: only publicly-visible ones, redacted except the name.
+    if (!talk.isActive || talk.hideFromPublicMap || talk.isPaused) continue;
+    const [name, email] = await Promise.all([
+      decryptField(pii.nameEnc, talk.id),
+      decryptField(pii.emailEnc, talk.id),
+    ]);
+    result.push({
+      ...toPublic(talk),
+      showGroupName: talk.showGroupName,
+      name,
+      address: '',
+      email: '',
+      phone: null,
+      adminNotes: null,
+      exactLat: talk.approxLat,
+      exactLng: talk.approxLng,
+      hideFromPublicMap: talk.hideFromPublicMap,
+      isPaused: talk.isPaused,
+      isActive: talk.isActive,
+      leaderAdminUserId: null,
+      isOwn: false,
+      redacted: true,
+      claimable:
+        !leaderIsLinked && talk.leaderAdminUserId === null && !hasRealEmail(email),
+      linkedLeaderEmail: null,
+    });
+  }
+  return result;
+}
+
+// Decrypt-scan contact emails to find the talk matching an invited leader's
+// email. Only unlinked talks qualify. Used once at invite time.
+export async function findTalkIdByEmail(email: string): Promise<string | null> {
+  const target = email.trim().toLowerCase();
+  const rows = await db
+    .select()
+    .from(bibleTalks)
+    .leftJoin(bibleTalksPii, eq(bibleTalksPii.bibleTalkId, bibleTalks.id));
+
+  for (const { bible_talks: talk, bible_talks_pii: pii } of rows) {
+    if (!pii || talk.leaderAdminUserId !== null) continue;
+    const talkEmail = await decryptField(pii.emailEnc, talk.id);
+    if (hasRealEmail(talkEmail) && talkEmail.trim().toLowerCase() === target) {
+      return talk.id;
+    }
+  }
+  return null;
+}
+
+// Link or unlink a leader account to a talk. Unlinking with
+// resetEmailToPlaceholder also resets the talk's contact email to the
+// placeholder ("no email" convention) — the admin "Remove leader" action.
+export async function setLeaderLink(
+  talkId: string,
+  leaderAdminUserId: string | null,
+  ctx: AdminContext,
+  opts: { resetEmailToPlaceholder?: boolean } = {},
+): Promise<void> {
+  await db
+    .update(bibleTalks)
+    .set({ leaderAdminUserId, updatedAt: new Date() })
+    .where(eq(bibleTalks.id, talkId));
+
+  if (leaderAdminUserId === null && opts.resetEmailToPlaceholder) {
+    await db
+      .update(bibleTalksPii)
+      .set({
+        emailEnc: await encryptField(PLACEHOLDER_EMAIL, talkId),
+        updatedAt: new Date(),
+      })
+      .where(eq(bibleTalksPii.bibleTalkId, talkId));
+  }
+
+  await record({
+    action: leaderAdminUserId ? 'leader_linked' : 'leader_unlinked',
+    ctx,
+    targetId: talkId,
+    metadata: { leaderAdminUserId },
+  });
 }
 
 export async function getPrivate(id: string, ctx: AdminContext): Promise<PrivateLeader | null> {

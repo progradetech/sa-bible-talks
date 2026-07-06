@@ -14,6 +14,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -35,7 +36,7 @@ export const authUsers = authSchema.table('users', {
   id: uuid('id').primaryKey(),
 });
 
-export const adminRole = pgEnum('admin_role', ['super_admin', 'admin']);
+export const adminRole = pgEnum('admin_role', ['super_admin', 'admin', 'leader']);
 
 export const bibleTalks = pgTable(
   'bible_talks',
@@ -53,6 +54,11 @@ export const bibleTalks = pgTable(
     hideFromPublicMap: boolean('hide_from_public_map').notNull().default(false),
     isPaused: boolean('is_paused').notNull().default(false),
     isActive: boolean('is_active').notNull().default(true),
+    // One-to-one link to a leader-role account: UNIQUE gives one talk per
+    // leader; the single column gives one leader per talk.
+    leaderAdminUserId: uuid('leader_admin_user_id')
+      .unique()
+      .references(() => adminUsers.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -175,6 +181,30 @@ export const siteSettings = pgTable(
   (t) => [check('singleton_check', sql`${t.id} = 1`)],
 ).enableRLS();
 
+export const leaderClaims = pgTable(
+  'leader_claims',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    bibleTalkId: uuid('bible_talk_id')
+      .notNull()
+      .references(() => bibleTalks.id, { onDelete: 'cascade' }),
+    leaderAdminUserId: uuid('leader_admin_user_id')
+      .notNull()
+      .references(() => adminUsers.id, { onDelete: 'cascade' }),
+    // Unguessable handle for the one-click approval link emailed to admins.
+    token: text('token').notNull().unique(),
+    status: text('status').notNull().default('pending'), // 'pending' | 'approved'
+    approvedBy: uuid('approved_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('idx_leader_claims_one_pending')
+      .on(t.leaderAdminUserId)
+      .where(sql`${t.status} = 'pending'`),
+  ],
+).enableRLS();
+
 export const messageTemplates = pgTable('message_templates', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
@@ -228,6 +258,10 @@ export const auditAction = {
   DEVICE_TRUST_REVOKED: 'device_trust_revoked',
   EXPORT_LEADERS: 'export_leaders',
   SEND_COMMS: 'send_comms',
+  LEADER_LINKED: 'leader_linked',
+  LEADER_UNLINKED: 'leader_unlinked',
+  LEADER_CLAIM_REQUESTED: 'leader_claim_requested',
+  LEADER_CLAIM_APPROVED: 'leader_claim_approved',
 } as const;
 
 export type AuditAction = (typeof auditAction)[keyof typeof auditAction];

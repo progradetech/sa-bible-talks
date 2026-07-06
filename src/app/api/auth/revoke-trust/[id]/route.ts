@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { ForbiddenError, UnauthorizedError, requireAdmin } from '@/lib/auth';
+import { ForbiddenError, UnauthorizedError, requireMember } from '@/lib/auth';
 import {
   TrustedDeviceNotFoundError,
   findActiveTrust,
@@ -17,7 +17,7 @@ export async function DELETE(
   const { id } = await params;
   let ctx;
   try {
-    ctx = await requireAdmin(req);
+    ctx = await requireMember(req);
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return Response.json({ error: 'unauthorized' }, { status: 401 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { AdminRole, PrivateLeader } from '@/lib/types';
+import type { AdminRole, MapLeader } from '@/lib/types';
 import { AdminHeader } from './AdminHeader';
 import { AdminMap } from './AdminMap';
 import { LeaderSidebar } from './LeaderSidebar';
@@ -11,7 +11,7 @@ import { LeaderEditForm } from './LeaderEditForm';
 type DrawerMode = 'view' | 'edit' | 'create' | null;
 
 interface Props {
-  leaders: PrivateLeader[];
+  leaders: MapLeader[];
   adminEmail: string;
   adminRole: AdminRole;
 }
@@ -107,13 +107,17 @@ export function AdminDashboard({ leaders, adminEmail, adminRole }: Props) {
           onCreate={handleCreate}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          role={adminRole}
         />
 
         {drawerMode === 'view' && selectedLeader && (
           <LeaderDrawer
+            // Remount per talk so claim/unlink state never leaks across rows.
+            key={selectedLeader.id}
             leader={selectedLeader}
             onEdit={handleEdit}
             onClose={handleClose}
+            role={adminRole}
           />
         )}
 
@@ -123,15 +127,17 @@ export function AdminDashboard({ leaders, adminEmail, adminRole }: Props) {
             onCancel={handleCancelEdit}
             onSaved={handleSaved}
             onDeleted={handleDeleted}
+            role={adminRole}
           />
         )}
 
-        {drawerMode === 'create' && (
+        {drawerMode === 'create' && adminRole !== 'leader' && (
           <LeaderEditForm
             leader={null}
             onCancel={handleCancelEdit}
             onSaved={handleSaved}
             onDeleted={handleDeleted}
+            role={adminRole}
           />
         )}
       </main>

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { adminUsers, db } from '@/db';
 import { record } from '@/lib/audit';
-import { ForbiddenError, UnauthorizedError, requireAdmin } from '@/lib/auth';
+import { ForbiddenError, UnauthorizedError, requireMember } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   let ctx;
   try {
-    ctx = await requireAdmin(req);
+    ctx = await requireMember(req);
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return Response.json({ error: 'unauthorized' }, { status: 401 });

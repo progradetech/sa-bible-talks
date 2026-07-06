@@ -7,17 +7,20 @@ import type { AdminRole } from '@/lib/types';
 interface NavItem {
   href: string;
   label: string;
-  superAdminOnly?: boolean;
+  // Roles that see this link; omit for all roles (including leader).
+  roles?: AdminRole[];
 }
+
+const STAFF: AdminRole[] = ['super_admin', 'admin'];
 
 const NAV: NavItem[] = [
   { href: '/admin', label: 'Map' },
-  { href: '/admin/leaders', label: 'Leaders' },
-  { href: '/admin/comms', label: 'Comms' },
-  { href: '/admin/audit', label: 'Audit' },
+  { href: '/admin/leaders', label: 'Leaders', roles: STAFF },
+  { href: '/admin/comms', label: 'Comms', roles: STAFF },
+  { href: '/admin/audit', label: 'Audit', roles: STAFF },
   { href: '/admin/devices', label: 'Devices' },
-  { href: '/admin/settings', label: 'Settings', superAdminOnly: true },
-  { href: '/admin/admins', label: 'Admins', superAdminOnly: true },
+  { href: '/admin/settings', label: 'Settings', roles: ['super_admin'] },
+  { href: '/admin/admins', label: 'Admins', roles: ['super_admin'] },
 ];
 
 interface Props {
@@ -27,7 +30,7 @@ interface Props {
 }
 
 export function AdminHeader({ email, role, currentPath }: Props) {
-  const visible = NAV.filter((n) => !n.superAdminOnly || role === 'super_admin');
+  const visible = NAV.filter((n) => !n.roles || n.roles.includes(role));
   const [navOpen, setNavOpen] = useState(false);
 
   return (

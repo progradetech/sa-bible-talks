@@ -38,7 +38,12 @@ export async function PATCH(
   if (body.isActive !== undefined && typeof body.isActive !== 'boolean') {
     return Response.json({ error: 'invalid_isActive' }, { status: 400 });
   }
-  if (body.role !== undefined && body.role !== 'admin' && body.role !== 'super_admin') {
+  if (
+    body.role !== undefined &&
+    body.role !== 'admin' &&
+    body.role !== 'super_admin' &&
+    body.role !== 'leader'
+  ) {
     return Response.json({ error: 'invalid_role' }, { status: 400 });
   }
 

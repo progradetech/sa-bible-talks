@@ -48,9 +48,20 @@ export async function getAdminContext(req?: Request): Promise<AdminContext | nul
   };
 }
 
-export async function requireAdmin(req?: Request): Promise<AdminContext> {
+// Any active signed-in account, including the leader role. Use only for
+// endpoints leaders are explicitly allowed to hit (own-talk edits, geocode,
+// trusted devices, claims).
+export async function requireMember(req?: Request): Promise<AdminContext> {
   const ctx = await getAdminContext(req);
   if (!ctx) throw new UnauthorizedError();
+  return ctx;
+}
+
+// Staff only (admin or super_admin). Leaders are rejected so every
+// pre-existing call site stays closed to them by default.
+export async function requireAdmin(req?: Request): Promise<AdminContext> {
+  const ctx = await requireMember(req);
+  if (ctx.role === 'leader') throw new ForbiddenError('admin role required');
   return ctx;
 }
 

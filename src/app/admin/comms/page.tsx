@@ -20,6 +20,7 @@ interface PageProps {
 export default async function CommsPage({ searchParams }: PageProps) {
   const ctx = await getAdminContext();
   if (!ctx) redirect('/admin/login');
+  if (ctx.role === 'leader') redirect('/admin');
 
   const params = await searchParams;
   const historyPage = params.hpage ? Math.max(1, parseInt(params.hpage, 10) || 1) : 1;

@@ -1,4 +1,4 @@
-export type AdminRole = 'super_admin' | 'admin';
+export type AdminRole = 'super_admin' | 'admin' | 'leader';
 
 export interface AdminContext {
   userId: string;
@@ -46,6 +46,20 @@ export interface PrivateLeader extends PublicLeader {
   hideFromPublicMap: boolean;
   isPaused: boolean;
   isActive: boolean;
+  leaderAdminUserId: string | null;
+}
+
+// What the admin map dashboard receives, for every role. Staff see all rows
+// unredacted. A leader-role user gets full PII only for their own talk;
+// other talks have PII fields blanked server-side and exactLat/exactLng set
+// to the approximate coords, so real PII never reaches their browser.
+export interface MapLeader extends PrivateLeader {
+  isOwn: boolean;
+  redacted: boolean;
+  claimable: boolean;
+  // Staff only: email of the linked leader account, for the drawer's
+  // "Managed by …" line. Null when unlinked or when viewer is a leader.
+  linkedLeaderEmail: string | null;
 }
 
 export interface CreateLeaderInput {

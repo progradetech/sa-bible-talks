@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { Ministry, PrivateLeader } from '@/lib/types';
+import type { AdminRole, MapLeader, Ministry } from '@/lib/types';
 
 const MINISTRY_COLORS: Record<Ministry, string> = {
   Family: '#2196F3',
@@ -12,12 +12,13 @@ const MINISTRY_COLORS: Record<Ministry, string> = {
 };
 
 interface Props {
-  leaders: PrivateLeader[];
+  leaders: MapLeader[];
   selectedLeaderId: string | null;
   onSelect: (id: string | null) => void;
   onCreate: () => void;
   open: boolean;
   onClose: () => void;
+  role: AdminRole;
 }
 
 export function LeaderSidebar({
@@ -27,6 +28,7 @@ export function LeaderSidebar({
   onCreate,
   open,
   onClose,
+  role,
 }: Props) {
   const [search, setSearch] = useState('');
 
@@ -50,14 +52,20 @@ export function LeaderSidebar({
     >
       <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={onCreate}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 md:py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            <span aria-hidden>+</span>
-            <span>Add leader</span>
-          </button>
+          {role !== 'leader' ? (
+            <button
+              type="button"
+              onClick={onCreate}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 md:py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              <span aria-hidden>+</span>
+              <span>Add leader</span>
+            </button>
+          ) : (
+            <div className="flex-1 text-sm font-semibold py-2 md:py-1.5">
+              Bible talks
+            </div>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -105,6 +113,11 @@ export function LeaderSidebar({
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-0.5 items-end justify-end max-w-[5.5rem]">
+                  {l.isOwn && (
+                    <span className="text-[9px] uppercase font-semibold text-blue-600 dark:text-blue-400">
+                      Yours
+                    </span>
+                  )}
                   {l.hideFromPublicMap && (
                     <span className="text-[9px] uppercase font-semibold text-amber-600 dark:text-amber-400">
                       Hidden

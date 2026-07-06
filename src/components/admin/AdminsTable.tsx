@@ -205,7 +205,9 @@ export function AdminsTable({ admins, currentAdminUserId }: Props) {
                   className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded inline-block ${
                     a.role === 'super_admin'
                       ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
-                      : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
+                      : a.role === 'leader'
+                        ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                        : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
                   }`}
                 >
                   {a.role}
@@ -254,18 +256,20 @@ export function AdminsTable({ admins, currentAdminUserId }: Props) {
                         {setPwLabel}
                       </MenuItem>
                     )}
-                    <MenuItem
-                      disabled={isPending}
-                      onClick={() =>
-                        update(a.id, {
-                          role: a.role === 'super_admin' ? 'admin' : 'super_admin',
-                        })
-                      }
-                    >
-                      {a.role === 'super_admin'
-                        ? 'Demote → admin'
-                        : 'Promote → super_admin'}
-                    </MenuItem>
+                    {a.role !== 'leader' && (
+                      <MenuItem
+                        disabled={isPending}
+                        onClick={() =>
+                          update(a.id, {
+                            role: a.role === 'super_admin' ? 'admin' : 'super_admin',
+                          })
+                        }
+                      >
+                        {a.role === 'super_admin'
+                          ? 'Demote → admin'
+                          : 'Promote → super_admin'}
+                      </MenuItem>
+                    )}
                     <MenuItem
                       disabled={isPending}
                       danger
@@ -318,7 +322,9 @@ export function AdminsTable({ admins, currentAdminUserId }: Props) {
                       className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${
                         a.role === 'super_admin'
                           ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
-                          : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
+                          : a.role === 'leader'
+                            ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                            : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
                       }`}
                     >
                       {a.role}
@@ -365,18 +371,20 @@ export function AdminsTable({ admins, currentAdminUserId }: Props) {
                             {setPwLabel}
                           </MenuItem>
                         )}
-                        <MenuItem
-                          disabled={isPending}
-                          onClick={() =>
-                            update(a.id, {
-                              role: a.role === 'super_admin' ? 'admin' : 'super_admin',
-                            })
-                          }
-                        >
-                          {a.role === 'super_admin'
-                            ? 'Demote → admin'
-                            : 'Promote → super_admin'}
-                        </MenuItem>
+                        {a.role !== 'leader' && (
+                          <MenuItem
+                            disabled={isPending}
+                            onClick={() =>
+                              update(a.id, {
+                                role: a.role === 'super_admin' ? 'admin' : 'super_admin',
+                              })
+                            }
+                          >
+                            {a.role === 'super_admin'
+                              ? 'Demote → admin'
+                              : 'Promote → super_admin'}
+                          </MenuItem>
+                        )}
                         <MenuItem
                           disabled={isPending}
                           danger

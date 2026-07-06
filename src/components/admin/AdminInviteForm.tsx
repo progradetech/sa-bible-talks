@@ -34,7 +34,16 @@ export function AdminInviteForm() {
         setSubmitting(false);
         return;
       }
-      setSuccess(`Invite sent to ${email}.`);
+      const data = (await res.json().catch(() => ({}))) as { linkedTalk?: boolean };
+      if (role === 'leader') {
+        setSuccess(
+          data.linkedTalk
+            ? `Invite sent to ${email} — linked to the bible talk with that contact email.`
+            : `Invite sent to ${email} — no bible talk matches that email yet; they can claim one from the map.`,
+        );
+      } else {
+        setSuccess(`Invite sent to ${email}.`);
+      }
       setEmail('');
       setRole('admin');
       router.refresh();
@@ -80,6 +89,7 @@ export function AdminInviteForm() {
           >
             <option value="admin">admin</option>
             <option value="super_admin">super_admin</option>
+            <option value="leader">leader</option>
           </select>
         </div>
         <button

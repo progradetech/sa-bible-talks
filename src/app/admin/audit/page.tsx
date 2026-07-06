@@ -22,6 +22,7 @@ interface PageProps {
 export default async function AuditPage({ searchParams }: PageProps) {
   const ctx = await getAdminContext();
   if (!ctx) redirect('/admin/login');
+  if (ctx.role === 'leader') redirect('/admin');
 
   const params = await searchParams;
   const isSuperAdmin = ctx.role === 'super_admin';

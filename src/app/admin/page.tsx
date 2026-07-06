@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getAdminContext } from '@/lib/auth';
-import { listPrivate } from '@/lib/repos/leaders';
+import { listForMap } from '@/lib/repos/leaders';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 
 // Admin pages are never cached. Each visit re-runs SSR (and therefore
@@ -18,7 +18,10 @@ export default async function AdminDashboardPage() {
     redirect('/admin/login');
   }
 
-  const leaders = await listPrivate(ctx);
+  // Role-aware: staff get every talk with full PII; a leader-role viewer
+  // gets full PII only for their own talk, everything else redacted
+  // server-side.
+  const leaders = await listForMap(ctx);
 
   return (
     <AdminDashboard

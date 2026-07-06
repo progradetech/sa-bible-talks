@@ -3,9 +3,11 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import type { Ministry, PrivateLeader } from '@/lib/types';
+import type { MapLeader, Ministry } from '@/lib/types';
 
 const SA_CENTER: [number, number] = [-98.4936, 29.4241];
+const DEFAULT_JITTER_MILES = 1.5;
+const EARTH_RADIUS_MILES = 3959;
 
 const MINISTRY_COLORS: Record<Ministry, string> = {
   Family: '#2196F3',
@@ -15,8 +17,37 @@ const MINISTRY_COLORS: Record<Ministry, string> = {
   Spanish: '#4CAF50',
 };
 
+// 64-sided polygon approximation of a real-world circle (same as the public
+// map) — redacted talks render as approximate areas, not pinpoints.
+function circlePolygon(
+  lat: number,
+  lng: number,
+  miles: number,
+  points = 64,
+): [number, number][] {
+  const angDist = miles / EARTH_RADIUS_MILES;
+  const latRad = (lat * Math.PI) / 180;
+  const lngRad = (lng * Math.PI) / 180;
+  const coords: [number, number][] = [];
+  for (let i = 0; i <= points; i++) {
+    const bearing = (i * 2 * Math.PI) / points;
+    const newLatRad = Math.asin(
+      Math.sin(latRad) * Math.cos(angDist) +
+        Math.cos(latRad) * Math.sin(angDist) * Math.cos(bearing),
+    );
+    const newLngRad =
+      lngRad +
+      Math.atan2(
+        Math.sin(bearing) * Math.sin(angDist) * Math.cos(latRad),
+        Math.cos(angDist) - Math.sin(latRad) * Math.sin(newLatRad),
+      );
+    coords.push([(newLngRad * 180) / Math.PI, (newLatRad * 180) / Math.PI]);
+  }
+  return coords;
+}
+
 interface Props {
-  leaders: PrivateLeader[];
+  leaders: MapLeader[];
   selectedLeaderId: string | null;
   onSelect: (id: string | null) => void;
 }
@@ -70,23 +101,65 @@ export function AdminMap({ leaders, selectedLeaderId, onSelect }: Props) {
         map.fitBounds(bounds, { padding: 80, maxZoom: 12 });
       }
 
-      const features = leaders.map((l) => ({
-        type: 'Feature' as const,
-        geometry: {
-          type: 'Point' as const,
-          coordinates: [l.exactLng, l.exactLat],
-        },
-        properties: {
-          id: l.id,
-          ministry: l.ministry,
-          name: l.name,
-          color: MINISTRY_COLORS[l.ministry] ?? '#999',
-        },
-      }));
+      // Redacted talks (leader-role viewer, not their own) render as
+      // approximate area circles like the public map; everything else keeps
+      // the exact pinpoint.
+      const pinFeatures = leaders
+        .filter((l) => !l.redacted)
+        .map((l) => ({
+          type: 'Feature' as const,
+          geometry: {
+            type: 'Point' as const,
+            coordinates: [l.exactLng, l.exactLat],
+          },
+          properties: {
+            id: l.id,
+            ministry: l.ministry,
+            name: l.name,
+            color: MINISTRY_COLORS[l.ministry] ?? '#999',
+          },
+        }));
+
+      const areaFeatures = leaders
+        .filter((l) => l.redacted)
+        .map((l) => ({
+          type: 'Feature' as const,
+          geometry: {
+            type: 'Polygon' as const,
+            coordinates: [
+              circlePolygon(
+                l.approxLat,
+                l.approxLng,
+                l.jitterMiles ?? DEFAULT_JITTER_MILES,
+              ),
+            ],
+          },
+          properties: {
+            id: l.id,
+            color: MINISTRY_COLORS[l.ministry] ?? '#999',
+          },
+        }));
+
+      map.addSource('leader-areas', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: areaFeatures },
+      });
+      map.addLayer({
+        id: 'leader-areas-fill',
+        type: 'fill',
+        source: 'leader-areas',
+        paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.18 },
+      });
+      map.addLayer({
+        id: 'leader-areas-line',
+        type: 'line',
+        source: 'leader-areas',
+        paint: { 'line-color': ['get', 'color'], 'line-width': 2 },
+      });
 
       map.addSource('leaders', {
         type: 'geojson',
-        data: { type: 'FeatureCollection', features },
+        data: { type: 'FeatureCollection', features: pinFeatures },
       });
 
       map.addLayer({
@@ -102,21 +175,33 @@ export function AdminMap({ leaders, selectedLeaderId, onSelect }: Props) {
         },
       });
 
-      map.on('click', 'leader-points', (e) => {
+      const handleFeatureClick = (e: maplibregl.MapLayerMouseEvent) => {
         const feature = e.features?.[0];
         const id = feature?.properties?.id as string | undefined;
         if (!id) return;
         // Toggle: clicking the already-selected pin deselects, matching
         // the sidebar's behavior.
         onSelectRef.current(selectedLeaderIdRef.current === id ? null : id);
+      };
+      map.on('click', 'leader-points', handleFeatureClick);
+      map.on('click', 'leader-areas-fill', (e) => {
+        // A pin rendered on top of an area wins the click — skip the area
+        // handler so one click doesn't select-then-deselect.
+        const pinsHit = map.queryRenderedFeatures(e.point, {
+          layers: ['leader-points'],
+        });
+        if (pinsHit.length > 0) return;
+        handleFeatureClick(e);
       });
 
-      map.on('mouseenter', 'leader-points', () => {
-        map.getCanvas().style.cursor = 'pointer';
-      });
-      map.on('mouseleave', 'leader-points', () => {
-        map.getCanvas().style.cursor = '';
-      });
+      for (const layer of ['leader-points', 'leader-areas-fill']) {
+        map.on('mouseenter', layer, () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', layer, () => {
+          map.getCanvas().style.cursor = '';
+        });
+      }
     });
 
     // MapLibre captures its container's dimensions at init time. If the
@@ -155,6 +240,14 @@ export function AdminMap({ leaders, selectedLeaderId, onSelect }: Props) {
         4,
         2,
       ]);
+      if (map.getLayer('leader-areas-fill')) {
+        map.setPaintProperty('leader-areas-fill', 'fill-opacity', [
+          'case',
+          ['==', ['get', 'id'], selectedLeaderId ?? ''],
+          0.35,
+          0.18,
+        ]);
+      }
       if (selectedLeaderId) {
         const leader = leaders.find((l) => l.id === selectedLeaderId);
         if (leader) {

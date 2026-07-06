@@ -1,13 +1,16 @@
 import { NextRequest } from 'next/server';
+import { eq } from 'drizzle-orm';
+import { bibleTalks, db } from '@/db';
 import { remove, update } from '@/lib/repos/leaders';
-import { ForbiddenError, UnauthorizedError, requireAdmin } from '@/lib/auth';
+import {
+  ForbiddenError,
+  UnauthorizedError,
+  requireAdmin,
+  requireMember,
+} from '@/lib/auth';
 import type { UpdateLeaderInput } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
-
-async function authedCtx(req: NextRequest) {
-  return requireAdmin(req);
-}
 
 export async function PATCH(
   req: NextRequest,
@@ -16,7 +19,7 @@ export async function PATCH(
   const { id } = await params;
   let ctx;
   try {
-    ctx = await authedCtx(req);
+    ctx = await requireMember(req);
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return Response.json({ error: 'unauthorized' }, { status: 401 });
@@ -28,6 +31,21 @@ export async function PATCH(
   }
 
   const body = (await req.json().catch(() => ({}))) as Partial<UpdateLeaderInput>;
+
+  if (ctx.role === 'leader') {
+    // Leaders may edit only the talk linked to their account, and never the
+    // contact email (their identity link) or admin notes.
+    const [talk] = await db
+      .select({ leaderAdminUserId: bibleTalks.leaderAdminUserId })
+      .from(bibleTalks)
+      .where(eq(bibleTalks.id, id))
+      .limit(1);
+    if (!talk || talk.leaderAdminUserId !== ctx.adminUserId) {
+      return Response.json({ error: 'forbidden' }, { status: 403 });
+    }
+    delete body.email;
+    delete body.adminNotes;
+  }
 
   try {
     await update(id, body, ctx);
@@ -45,7 +63,7 @@ export async function DELETE(
   const { id } = await params;
   let ctx;
   try {
-    ctx = await authedCtx(req);
+    ctx = await requireAdmin(req);
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return Response.json({ error: 'unauthorized' }, { status: 401 });

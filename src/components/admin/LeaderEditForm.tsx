@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Language, Ministry, PrivateLeader } from '@/lib/types';
+import type { AdminRole, Language, Ministry, PrivateLeader } from '@/lib/types';
 
 const MINISTRIES: Ministry[] = ['Family', 'YoPro', 'Campus', 'Singles', 'Spanish'];
 const LANGUAGES: Language[] = ['English', 'Spanish', 'Bilingual'];
@@ -12,11 +12,15 @@ interface Props {
   onCancel: () => void;
   onSaved: (id: string) => void;
   onDeleted: () => void;
+  role: AdminRole;
 }
 
-export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted }: Props) {
+export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted, role }: Props) {
   const router = useRouter();
   const isCreating = leader === null;
+  // Leaders edit their own talk but never the contact email (their identity
+  // link), admin notes, or delete. The server enforces the same rules.
+  const isLeaderRole = role === 'leader';
 
   const [name, setName] = useState(leader?.name ?? '');
   const [email, setEmail] = useState(leader?.email ?? '');
@@ -103,7 +107,7 @@ export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted }: Props) 
     const body = {
       name: name.trim(),
       address: address.trim(),
-      email: email.trim(),
+      email: isLeaderRole ? undefined : email.trim(),
       phone: phone.trim() || undefined,
       ministry,
       language,
@@ -111,7 +115,7 @@ export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted }: Props) 
       groupName: groupName.trim() || undefined,
       showGroupName,
       meetingInfo: meetingInfo.trim() || undefined,
-      adminNotes: adminNotes.trim() || undefined,
+      adminNotes: isLeaderRole ? undefined : adminNotes.trim() || undefined,
       exactLat: lat,
       exactLng: lng,
       jitterMiles: jm ? parseFloat(jm) : undefined,
@@ -212,13 +216,26 @@ export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted }: Props) 
         </Section>
 
         <Section label="Contact (encrypted)">
-          <Input
-            label="Email"
-            type="email"
-            value={email}
-            onChange={setEmail}
-            required
-          />
+          {isLeaderRole ? (
+            <div>
+              <label className="block text-xs font-medium mb-1">Email</label>
+              <div className="text-sm px-3 py-2 md:py-1.5 border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 rounded-md text-zinc-500 dark:text-zinc-400 break-all">
+                {email}
+              </div>
+              <p className="text-[11px] text-zinc-400 mt-1">
+                The contact email links this bible talk to your account and is
+                managed by admins.
+              </p>
+            </div>
+          ) : (
+            <Input
+              label="Email"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              required
+            />
+          )}
           <Input label="Phone" type="tel" value={phone} onChange={setPhone} />
         </Section>
 
@@ -280,14 +297,16 @@ export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted }: Props) 
           />
         </Section>
 
-        <Section label="Admin notes (encrypted, private)">
-          <textarea
-            value={adminNotes}
-            onChange={(e) => setAdminNotes(e.target.value)}
-            rows={3}
-            className="w-full px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-          />
-        </Section>
+        {!isLeaderRole && (
+          <Section label="Admin notes (encrypted, private)">
+            <textarea
+              value={adminNotes}
+              onChange={(e) => setAdminNotes(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+            />
+          </Section>
+        )}
 
         <Section label="Privacy & status">
           <Input
@@ -322,7 +341,7 @@ export function LeaderEditForm({ leader, onCancel, onSaved, onDeleted }: Props) 
       </form>
 
       <footer className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2">
-        {!isCreating ? (
+        {!isCreating && !isLeaderRole ? (
           confirmingDelete ? (
             <div className="flex items-center gap-2">
               <button

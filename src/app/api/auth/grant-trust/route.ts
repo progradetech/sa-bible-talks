@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { ForbiddenError, UnauthorizedError, requireAdmin } from '@/lib/auth';
+import { ForbiddenError, UnauthorizedError, requireMember } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { grantTrust } from '@/lib/repos/trusted-devices';
 import { TRUSTED_DEVICE_COOKIE, trustCookieOptions } from '@/lib/trusted-device';
@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   let ctx;
   try {
-    ctx = await requireAdmin(req);
+    ctx = await requireMember(req);
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return Response.json({ error: 'unauthorized' }, { status: 401 });
