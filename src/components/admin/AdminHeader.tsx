@@ -15,6 +15,7 @@ const STAFF: AdminRole[] = ['super_admin', 'admin'];
 
 const NAV: NavItem[] = [
   { href: '/admin', label: 'Map' },
+  { href: '/admin/care', label: 'Care' },
   { href: '/admin/leaders', label: 'Leaders', roles: STAFF },
   { href: '/admin/comms', label: 'Comms', roles: STAFF },
   { href: '/admin/audit', label: 'Audit', roles: STAFF },

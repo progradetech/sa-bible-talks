@@ -1,3 +1,5 @@
+import type { CareType } from './care-stages';
+
 export type AdminRole = 'super_admin' | 'admin' | 'leader';
 
 export interface AdminContext {
@@ -84,6 +86,44 @@ export type UpdateLeaderInput = Partial<CreateLeaderInput> & {
   isPaused?: boolean;
   isActive?: boolean;
 };
+
+export interface CareEntry {
+  id: string;
+  bibleTalkId: string | null;
+  type: CareType;
+  stage: string;
+  personName: string | null;
+  contact: string | null;
+  details: string | null;
+  outcome: string | null;
+  createdBy: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  archivedAt: Date | null;
+}
+
+export interface CreateCareEntryInput {
+  bibleTalkId?: string | null;
+  type: CareType;
+  stage?: string;
+  personName?: string;
+  contact?: string;
+  details?: string;
+}
+
+export interface CareTalkOption {
+  id: string;
+  label: string;
+}
+
+export interface UpdateCareEntryInput {
+  bibleTalkId?: string | null;
+  stage?: string;
+  personName?: string | null;
+  contact?: string | null;
+  details?: string | null;
+  outcome?: string | null;
+}
 
 export interface VisitorRequestInput {
   targetBibleTalkId: string;

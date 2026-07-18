@@ -38,6 +38,13 @@ export const authUsers = authSchema.table('users', {
 
 export const adminRole = pgEnum('admin_role', ['super_admin', 'admin', 'leader']);
 
+export const careType = pgEnum('care_type', [
+  'prayer_request',
+  'interested',
+  'move_in',
+  'restore',
+]);
+
 export const bibleTalks = pgTable(
   'bible_talks',
   {
@@ -205,6 +212,32 @@ export const leaderClaims = pgTable(
   ],
 ).enableRLS();
 
+export const careEntries = pgTable(
+  'care_entries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // Null = unassigned bucket — a prospect not yet tied to a specific talk.
+    bibleTalkId: uuid('bible_talk_id').references(() => bibleTalks.id, {
+      onDelete: 'set null',
+    }),
+    type: careType('type').notNull(),
+    stage: text('stage').notNull(),
+    personNameEnc: bytea('person_name_enc'),
+    contactEnc: bytea('contact_enc'),
+    detailsEnc: bytea('details_enc'),
+    outcomeEnc: bytea('outcome_enc'),
+    keyVersion: text('key_version').notNull().default('v1'),
+    createdBy: uuid('created_by').references(() => adminUsers.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('idx_care_entries_talk').on(t.bibleTalkId, t.archivedAt),
+    index('idx_care_entries_facets').on(t.type, t.stage),
+  ],
+).enableRLS();
+
 export const messageTemplates = pgTable('message_templates', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
@@ -262,6 +295,12 @@ export const auditAction = {
   LEADER_UNLINKED: 'leader_unlinked',
   LEADER_CLAIM_REQUESTED: 'leader_claim_requested',
   LEADER_CLAIM_APPROVED: 'leader_claim_approved',
+  CARE_ENTRY_CREATED: 'care_entry_created',
+  CARE_ENTRY_UPDATED: 'care_entry_updated',
+  CARE_ENTRY_STAGE_CHANGED: 'care_entry_stage_changed',
+  CARE_ENTRY_ASSIGNED: 'care_entry_assigned',
+  CARE_ENTRY_ARCHIVED: 'care_entry_archived',
+  CARE_ENTRY_DELETED: 'care_entry_deleted',
 } as const;
 
 export type AuditAction = (typeof auditAction)[keyof typeof auditAction];
