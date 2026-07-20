@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CARE_STAGES, CARE_TYPES, CARE_TYPE_LABELS, type CareType } from '@/lib/care-stages';
 import type { CareTalkOption } from '@/lib/types';
@@ -131,7 +132,13 @@ export function StaffCarePanel({ rows, talkOptions, counts, filters }: Props) {
           Show archived
         </label>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Link
+            href={`/admin/care/report${searchParams.toString() ? `?${searchParams.toString()}` : ''}`}
+            className="text-xs px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200"
+          >
+            Report
+          </Link>
           <NewEntryForm onCreated={refresh} talkOptions={talkOptions} />
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { csvEscape, downloadBlob, todayStamp } from '@/lib/export';
 import type { Ministry } from '@/lib/types';
 
 const MINISTRY_COLORS: Record<Ministry, string> = {
@@ -45,26 +46,6 @@ function MinistryLabel({ ministry }: { ministry: Ministry }) {
       {ministry}
     </span>
   );
-}
-
-function csvEscape(value: string | null): string {
-  const s = value ?? '';
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-function todayStamp(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 export function LeadersTable({ rows }: Props) {

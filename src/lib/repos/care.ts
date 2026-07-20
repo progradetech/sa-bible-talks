@@ -218,6 +218,49 @@ export async function listTalkOptions(): Promise<CareTalkOption[]> {
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
+export interface TalkTypeMatrixRow {
+  bibleTalkId: string | null;
+  talkLabel: string;
+  countsByType: Record<CareType, number>;
+  total: number;
+}
+
+// Active-entry counts per talk × care type, for the report's summary table.
+// bibleTalkId null = the Unassigned row.
+export async function countsByTalkAndType(): Promise<TalkTypeMatrixRow[]> {
+  const rows = await db
+    .select({
+      bibleTalkId: careEntries.bibleTalkId,
+      type: careEntries.type,
+      ministry: bibleTalks.ministry,
+      groupName: bibleTalks.groupName,
+      total: count(),
+    })
+    .from(careEntries)
+    .leftJoin(bibleTalks, eq(bibleTalks.id, careEntries.bibleTalkId))
+    .where(isNull(careEntries.archivedAt))
+    .groupBy(careEntries.bibleTalkId, careEntries.type, bibleTalks.ministry, bibleTalks.groupName);
+
+  const byTalk = new Map<string, TalkTypeMatrixRow>();
+  for (const r of rows) {
+    const key = r.bibleTalkId ?? '';
+    let entry = byTalk.get(key);
+    if (!entry) {
+      entry = {
+        bibleTalkId: r.bibleTalkId,
+        talkLabel: r.bibleTalkId ? r.groupName || r.ministry || 'Unnamed talk' : 'Unassigned',
+        countsByType: { prayer_request: 0, interested: 0, move_in: 0, restore: 0 },
+        total: 0,
+      };
+      byTalk.set(key, entry);
+    }
+    entry.countsByType[r.type] += Number(r.total);
+    entry.total += Number(r.total);
+  }
+
+  return [...byTalk.values()].sort((a, b) => a.talkLabel.localeCompare(b.talkLabel));
+}
+
 export async function talkExists(talkId: string): Promise<boolean> {
   const [talk] = await db
     .select({ id: bibleTalks.id })

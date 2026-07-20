@@ -301,6 +301,7 @@ export const auditAction = {
   CARE_ENTRY_ASSIGNED: 'care_entry_assigned',
   CARE_ENTRY_ARCHIVED: 'care_entry_archived',
   CARE_ENTRY_DELETED: 'care_entry_deleted',
+  CARE_EXPORT: 'care_export',
 } as const;
 
 export type AuditAction = (typeof auditAction)[keyof typeof auditAction];
